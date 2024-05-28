@@ -5,7 +5,7 @@
  Most of my NodeMCU v1.0 DEV boards have this undocumented part :(
 
  First point, if 0xD8 is a Manufacturer ID it has a parity error. Therefore, it
- will not appear in any of JEDEC Manufacturer Banks.
+ will not appear in any list of JEDEC Manufacturer Banks.
 
 ////////////////////////////////////////////////////////////////////////////////
                                           SFDP Header dword 1
@@ -51,7 +51,7 @@
  SFDP:     0x30    0xFFF120E5 0x01FFFFFF 0x6B08EB44 0xBB423B08
  SFDP:     0x40    0xFFFFFFEE 0xFF00FFFF 0xFF00FFFF 0x520F200C
  SFDP:     0x50    0xFF00D810                                   GD25Q32C only has 9 entries and these match
-           0x54               0xFEBD4A24 0x42152782 0x331662EC
+           0x54               0xFEBD4A24 0x42152782 0x331662EC  GD25Q32E has 16 entries
  SFDP:     0x60    0x757A757A 0x5CD5B304 0x00640600 0x00001008
  ...
  SFDP:     0x90    0x27003600 0x6477F99E 0xFFFFCBFC 0xFFFFFFFF
@@ -82,66 +82,60 @@
 
  Consult JESD216F-02.pdf for SFDP details:
 
- 110b: QE is bit 1 of the status register 2. Status register 1 is read using
- Read Status instruction 05h. Status register 2 is read using instruction 35h,
- and status register 3 is read using instruction 15h. QE is set via Write Status
- Register instruction 31h with one data byte where bit 1 is one. It is cleared
- via Write Status Register instruction 31h with one data byte where bit 1 is
- zero.
+ 15th DWORD 22:20 - param data not on the CD25Q32C; however, it is on the CD25Q32E.
+ Study JEDEC document well - all 8 options cover all the information we need for
+ the flash options we have not yet seen.
 
- xxx_1xxxb: Non-Volatile/Volatile status register 1 powers-up to last written
- value in the non-volatile status register, use instruction 06h to enable write
- to non-volatile status register. This is Broken -> [Volatile status register
- may be activated after power-up to override the non-volatile status register,
- use instruction 50h to enable write and activate the volatile status register.]
+ 110b: QE is BIT1 of the SR2.
+ Read 1 data byte from SR1 with Read Status instruction 05h.
+ Read 1 data byte from SR2 with Read Status instruction 35h,
+ Read 1 data byte from SR3 with Read Status instruction 15h.
+ Write one data byte to SR2 with Write Status instruction 31h,
+ QE is enabled via Write SR2 with 1 data byte with BIT1 set.
+ QE is disabled via Write SR2 with 1 data byte with BIT1 cleared.
 
-** recheck this
- Note, there is no meantion of status register-2 supporting a Volatile copy.
- Emperically, the device fails to respond to attempts at setting an assumed
- volatile QE bit. Both direct status register-2 write and, the method used by
- Espressif BootROM, a 16-bit status register-1 write - <cleanup text> The ESP8266 BootROM tries
- to reprogramme the QE at boot, based on the information in the bin header file.
- This action fails with this device. Leaving the QE bit unchanged. I plan to use
- this bug as a feature to allow access to the GPIO9 and GPIO10 pins w/o
- reprogramming the Flash Status Register at every boot cycle. By setting the
- non-volatile QE bit once, at the next boot cycle the BootROM tries and fails
- to reset the QE bit. Evidence of failure are present after boot, by way of the
- WSEN bit still being set,
 
- Has Status Register-1, 2, and 3
- No support for legacy 16-bit Status Register-1 Write
- There appear to be Driver strength bits in Status Register-3, defaults to 75% (01)
+ Non-Volatile/Volatile SR1 powers-up to last value written to the non-volatile
+ SR1. For non-volatile SR1, use instruction 06h to enable write to non-volatile
+ status register.
+ To enable override with volatile status register after power-up, use
+ instruction 50h to enable write before issuing instruction 06h for write SR1.
+
+ The ESP8266 BootROM tries to reprogramme the QE at boot, based on the
+ information in the bin header file. This action fails with this device. Leaving
+ the QE bit unchanged.  This could be used as a feature to allow access to the
+ GPIO9 and GPIO10 pins w/o reprogramming the Flash Status Register at every boot
+ cycle. By setting the non-volatile QE bit once, at the next boot cycle the
+ BootROM tries and fails to reset the QE bit. Evidence of failure are present
+ after boot, by way of the WSEN bit still being set,
+
+ Has SR1, SR2, and SR3
+ No support for legacy 16-bit SR1 Write
+ There appear to be Driver strength bits in SR3, defaults to 75% (01)
  This mystery flash supports a 128-bit Unique ID, but only the first 64 bits are
  set the last 64 are 0xFF... unprogrammed.
- The 2nd Parameter table hints at the MFG being "GigaDevice Semiconductor";
- however, the MSB which would have indicate the bank selection is 0xFF, unprogrammed.
+ The 2nd Parameter table hints at the MFG being "GigaDevice Semiconductor".
  I get the feeling these parts were never finalized. Also the MFG ID 0xD8 is
  returned by the SPI command 9fh . 0xC8 with one bit picked, 0x10. Easy burned
- to 0 when the parts are ready. Similar to 0xFF for the bank number and the last
- 64 bits of the unique ID.
+ to 0 when the parts are ready. Similar to 0xFFs last 64 bits of the unique ID.
 
  Summary
  -------
 
- What ever the situation is for this device it does not behave as expected if
+ Whatever the situation is for this device it does not behave as expected if
  it were a GigaDevice Part. So lets define what we know.
 
- For Status Registers 1, 2, and 3 - Most bits in registers are non-volatile
- only. The Volatile CMD 0x50u does NOT work for bits DRV1, DRV0, and QE.
- Status Register-1's WIP and WEL are volatile and may be the only volatile bits
- present.
-
- No support for 16-bit write status register-1
+ No support for 16-bit write SR1
 
  Register bits - This is what I assume:
 
-    S23   S22   S21   S20   S19   S18   S17   S16   - Status Register-3
+    S23   S22   S21   S20   S19   S18   S17   S16   - SR3
          DRV1  DRV0
 
-    S15   S14   S13   S12   S11   S10    S9    S8   - Status Register-2
+    S15   S14   S13   S12   S11   S10    S9    S8   - SR2
                                          QE
 
-     S7    S6    S5    S4    S3    S2    S1    s0   - Status Register-1
+     S7    S6    S5    S4    S3    S2    S1    s0   - SR1
                                         WEL   WIP
 
 There is a strong corelation between GigaDevice datasheet and this SFDP, I think
@@ -154,6 +148,8 @@ All status registers are accessed as 8-bit only.
 Avoid using any bits not listed.
 
 Assume Unique ID has only 64-bits.
+
+Software reset 66h, 99h cleared the non-volatile QE bit in the SR2
 
 */
 

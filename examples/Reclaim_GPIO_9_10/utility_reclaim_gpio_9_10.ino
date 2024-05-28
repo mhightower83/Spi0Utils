@@ -13,7 +13,7 @@
     For example, the EN25Q32C does not have the QE bit as defined by other
     vendors. It does not have the /HOLD signal. And /WP is disabled by status
     register-1 BIT6. This case is already handled by default unless you supply
-    "-DSUPPORT_SPI_FLASH_VENDOR_EON=0" to the build.
+    "-DSUPPORT_SPI_FLASH__S6_QE_WPDIS=0" to the build.
 
   * You may need to write a unique case for your device. We rely on setting
     Status Register QE bit (S9) to disable the use of /WP and /HOLD pin
@@ -31,8 +31,10 @@
 //
 SPI Flash Notes and Anomalies:
 
-XMC
- 1. Clears status register-3 on volatile write to register-2. Restores on power-up.
+XMC - SFDP Revision matches up with XM25QH32B datasheet.
+ 1. Clears status register-3 on volatile write to register-2. Restores on
+    power-up. But not on Flash software reset, opcodes 66h-99h. However, the QE
+    bit did refresh to the non-volatile value.
  2. Accepts 8-bit write register-2 or 16-bit write register-2.
  3. XM25Q32B and XM25Q32C have different Driver strength tables.
     MFG/Device is not enough to differentiate. Need to use SFDP.
@@ -44,10 +46,11 @@ XMC
  4. The BootROM's 16-bit register-1 writes will fail. This works in our
     favor, no extra wear on the Flash.
  5. The last 64 bits of the 128-bit Unique ID are still in the erased state.
+ 6. Flash Software Reset, opcodes 66h-99h, clears non-volatile QE bit!!!
 
 GigaDevice
  1. No legacy 16-bit, only 8-bit write status register commands are supported.
- 2. Unkown, if the volatile status registers work on the non-obfuscated parts.
+ 2. Unkown, if the volatile status registers work on these non-obfuscated parts.
 
 Winbond
  1. My new NodeMCU v1.0 board only works with 16-bit write status register-1.
@@ -57,7 +60,7 @@ EON
  1. EN25Q32C found on an AI Thinker ESP-12F module marked as DIO near antenna.
  2. Only has 1 Status Register. The BootROM's 16-bit register-1 writes fail.
  3. NC, No /HOLD pin function.
- 4. Has WPDis, Bit6, to disable the /WP pin function.
+ 4. Status Register has WPDis, Bit6, to disable the /WP pin function.
 
 
 
@@ -74,7 +77,7 @@ best/wise to avoid the extra effort/frustration to make it work.
 bool reclaim_GPIO_9_10();
 */
 
-// #define DEV_DEBUG 1 // set in *.ino.globals.h instead
+// #define DEBUG_FLASH_QE 1 // set in *.ino.globals.h instead
 #if 0
 // Needed when module is a .cpp
 #include <Arduino.h>
@@ -82,16 +85,16 @@ bool reclaim_GPIO_9_10();
 #include "kStatusRegisterBitDef.h"
 #include "FlashChipId_D8.h"
 
-// #define ETS_PRINTF ets_uart_printf
-#ifdef DEV_DEBUG
+#define ETS_PRINTF ets_uart_printf
+#ifdef DEBUG_FLASH_QE
 #define DBG_PRINTF ets_uart_printf
 #else
 #define DBG_PRINTF(...) do {} while (false)
 #endif
 #endif
 
-#ifndef SUPPORT_SPI_FLASH_VENDOR_EON
-#define SUPPORT_SPI_FLASH_VENDOR_EON 1
+#ifndef SUPPORT_SPI_FLASH__S6_QE_WPDIS
+#define SUPPORT_SPI_FLASH__S6_QE_WPDIS 1
 #endif
 #ifndef SUPPORT_MYSTERY_VENDOR_D8
 #define SUPPORT_MYSTERY_VENDOR_D8 1
@@ -110,7 +113,7 @@ bool reclaim_GPIO_9_10(void);
 bool set_QE_bit__8_bit_sr2_write(void);
 bool set_QE_bit__16_bit_sr1_write(void);
 
-#if SUPPORT_SPI_FLASH_VENDOR_EON
+#if SUPPORT_SPI_FLASH__S6_QE_WPDIS
 bool set_WPDis_bit_EON(void);
 bool clear_WPDis_bit_EON(void);
 #endif
@@ -129,7 +132,14 @@ inline bool verify_status_register_2(uint32_t a_bit_mask) {
 
 // WEL => Write Enable Latch
 inline bool is_WEL(void) {
-  return verify_status_register_1(kWELBit);
+  bool success = verify_status_register_1(kWELBit);
+  // DBG_PRINTF("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
+  return success;
+}
+inline bool is_WEL_dbg(void) {
+  bool success = verify_status_register_1(kWELBit);
+  ETS_PRINTF("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
+  return success;
 }
 
 // WIP => Write In Progress aka Busy
@@ -137,14 +147,19 @@ inline bool is_WIP(void) {
   return verify_status_register_1(kWIPBit);
 }
 
-// WPDis => pin Write Protect Disable, maybe only on the EN25Q32C
-inline bool is_WPDis_EON(void) {
-  return verify_status_register_1(kWPDISBit);
+// S6, WPDis => pin Write Protect Disable, maybe only on the EN25Q32C
+// S6, on some devices (ISSI, ) is similar to QE at S9 on others.
+inline bool is_S6_QE_WPDis(void) {
+  bool success = verify_status_register_1(kWPDISBit);
+  DBG_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (success) ? "confirmed" : "NOT");
+  return success;
 }
 
-// QE => Quad Enable
+// QE => Quad Enable, S9
 inline bool is_QE(void) {
-  return verify_status_register_2(kQEBit8);
+  bool success = verify_status_register_2(kQEBit1B);
+  DBG_PRINTF("  %s bit %s set.\n", "QE", (success) ? "confirmed" : "NOT");
+  return success;
 }
 
 // Note, there are other SPI registers with bits for other aspects of QUAD
@@ -154,63 +169,122 @@ inline bool is_spi0_quad(void) {
   return (0 != ((SPICQIO | SPICQOUT) & SPI0C));
 }
 
-#if SUPPORT_SPI_FLASH_VENDOR_EON
+#if SUPPORT_SPI_FLASH__S6_QE_WPDIS
 // Only for EN25Q32C, earlier version may not work.
 // Maybe add SFDP call to validate EN25Q32C part.
 // see RTOS_SDK/components/spi_flash/src/spi_flash.c
 // Don't rely on that Espressif sample too closely. The data shown for EN25Q16A
 // is not correct. The EN25Q16A and EN25Q16B do no support SFDP.
-bool set_WPDis_bit_EON(void) {
-  uint32_t status = kWPDISBit;
-#if PRESERVE_EXISTING_STATUS_BITS
-  spi0_flash_read_status_register_1(&status);
-  status |= kWPDISBit;
-#endif
-  // All changes made to the volatile copies of the Status Register-1.
-  spi0_flash_write_status_register_1(status, false);
-  return is_WPDis_EON();
-}
-
-bool clear_WPDis_bit_EON(void) {
+static bool set_S6_QE_WPDis_bit(bool non_volatile) {
   uint32_t status = 0;
-#if PRESERVE_EXISTING_STATUS_BITS
   spi0_flash_read_status_register_1(&status);
-  status &= ~kWPDISBit;
+  bool is_set = (0 != (status & kWPDISBit));
+  DBG_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (is_set) ? "confirmed" : "NOT");
+  if (is_set) return true;
+
+#if PRESERVE_EXISTING_STATUS_BITS
+  status |= kWPDISBit;
+#else
+  status = kWPDISBit;
 #endif
   // All changes made to the volatile copies of the Status Register-1.
+  DBG_PRINTF("  Setting %volatile %s bit.\n", (non_volatile) ? "non-" : "", "S6/QE/WPDis");
+  spi0_flash_write_status_register_1(status, non_volatile);
+  return is_S6_QE_WPDis();
+}
+
+[[maybe_unused]]
+static bool clear_S6_QE_WPDis_bit(void) {
+  uint32_t status = 0;
+  spi0_flash_read_status_register_1(&status);
+  bool not_set = (0 == (status & kWPDISBit));
+  DBG_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (not_set) ? "NOT" : "confirmed");
+  if (not_set) return true;
+
+#if PRESERVE_EXISTING_STATUS_BITS
+  status &= ~kWPDISBit;
+#else
+  status = 0;
+#endif
+  // All changes made to the volatile copies of the Status Register-1.
+  DBG_PRINTF("  Clearing volatile S6/QE/WPDis bit - 8-bit write.\n");
   spi0_flash_write_status_register_1(status, false);
-  return (false == is_WPDis_EON());
+  return (false == is_S6_QE_WPDis());
 }
 #endif
 
-bool set_QE_bit__8_bit_sr2_write(bool non_volatile) {
-  uint32_t status = kQEBit8;
+static bool set_QE_bit__8_bit_sr2_write(bool non_volatile) {
+  uint32_t status2 = 0;
+  spi0_flash_read_status_register_2(&status2);
+  bool is_set = (0 != (status2 & kQEBit1B));
+  DBG_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
+  if (is_set) return true;
+
 #if PRESERVE_EXISTING_STATUS_BITS
-  spi0_flash_read_status_register_2(&status);
-  status |= kQEBit8;
+  status2 |= kQEBit1B;
+#else
+  status2 = kQEBit1B;
 #endif
-  spi0_flash_write_status_register_2(status, non_volatile);
+  DBG_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 8u);
+  spi0_flash_write_status_register_2(status2, non_volatile);
   return is_QE();
 }
 
-bool set_QE_bit__16_bit_sr1_write(bool non_volatile) {
-  uint32_t status = kQEBit16;
-#if PRESERVE_EXISTING_STATUS_BITS
+static bool set_QE_bit__16_bit_sr1_write(bool non_volatile) {
+  uint32_t status = 0;
   spi0_flash_read_status_registers_2B(&status);
-  status |= kQEBit16;
+  bool is_set = (0 != (status & kQEBit2B));
+  DBG_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
+  if (is_set) return true;
+
+#if PRESERVE_EXISTING_STATUS_BITS
+  status |= kQEBit2B;
+#else
+  status = kQEBit2B;
 #endif
+  DBG_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 16u);
   spi0_flash_write_status_registers_2B(status, non_volatile);
   return is_QE();
 }
 
+static void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
+  uint32_t status = flash_gd25q32c_read_status(reg_0idx);
+  if (pattern & status) {
+    status &= ~pattern;
+    flash_gd25q32c_write_status(reg_0idx, status); // 8-bit status register write
+    // This message should not repeat at next boot
+    DBG_PRINTF("** One time clear of Status Register-%u bits 0x%02X.\n", reg_0idx + 1, pattern);
+  }
+}
+inline void clear_sr1_mask(const uint32_t pattern) {
+  clear_sr_mask(0, pattern);
+}
+inline void clear_sr2_mask(const uint32_t pattern) {
+  clear_sr_mask(1, pattern);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
+// To free up the GPIO pins, the SPI Flash device needs to support turning off
+// pin functions /WP and /HOLD. This is often controlled through the Quad
+// Enable (QE) bit. Depending on the vendor, it is either at S9 or S6 of the
+// Status Register.
+//
+// Non-volatile Status Register values are loaded at powerup. When the volatile
+// values are set and no power cycling, they stay set across ESP8266 reboots
+// unless some part of the system is changing them.
+// Flash that is fully compatible with the ESP8266 QIO bit handling will be
+// reset back to DIO by the BootROM.
+//
+// How does that work. We are using volatile QE. Reboot and the BootROM rewrites
+// Status Register QE back to non-volatile QE clear.
+//
 // returns:
 // true  - on success
 // false - on failure
 bool reclaim_GPIO_9_10() {
   bool success = false;
 
-#if defined(RECLAIM_GPIO_EARLY) && defined(DEV_DEBUG)
+#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
   pinMode(1, SPECIAL);
   uart_buff_switch(0);
 #endif
@@ -236,76 +310,111 @@ bool reclaim_GPIO_9_10() {
     return false;
   }
 
-  switch (0xFFu & _id) {
+  /*
+    The vendor id is an odd parity value. There are a possible 128 manufactures.
+    Additionally there are 11 banks of 128 manufactures. Our extracted vendor
+    value is one of 11 possible vendors. We do not have an exact match. I have
+    not seen any way to ID the bank.
+  */
+  uint32_t vendor = 0xFFu & _id;
+  switch (vendor) {
+
+    case SPI_FLASH_VENDOR_GIGADEVICE:
+      // I don't have matching hardware.  My read of the GigaDevice datasheet
+      // says it should work. Why was the MFG ID is obfuscated.
+
+      // Only supports 8-bit status register writes.
+      success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+
+      // For this part, non-volatile could be used w/o concern of write fatgue.
+      // Once non-volatile set, no attempts by the BootROM or SDK to change will
+      // work. 16-bit Status Register-1 writes will always fail.
+      // volatile_bit is safe and faster write time.
+      break;
 
 #if SUPPORT_MYSTERY_VENDOR_D8
-    case SPI_FLASH_VENDOR_MYSTERY_D8: // 0xD8u: // Mystery Vendor
-      success = is_QE();
-      if (success) {
-        DBG_PRINTF("  QE bit already set.\n");
-      } else {
-        // Write volatile status register not working, must use non-volatile
-        // Once set, no extra wear on flash - stays set through reboots.
-        // 16-bit register writes always fail.
-        success = set_QE_bit__8_bit_sr2_write(true); // non-volatile
-        if (success) DBG_PRINTF("  Non-volatile QE bit set with Write Status Register-2.\n");
-      }
+    // Indicators are this is an obfuscated GigaDevice part.
+    case SPI_FLASH_VENDOR_MYSTERY_D8: // 0xD8, Mystery Vendor
+      // NONOS SDK does not handle MYSTERY_D8
+      // clear Status Register protection bits
+      clear_sr1_mask(0x7Cu);  // 0x0x83u Clear BP4, BP3, BP2, BP1, and BP0
+      clear_sr2_mask(0x40u);  // Clear CMP
+
+      success = set_QE_bit__8_bit_sr2_write(volatile_bit);
       break;
 #endif
+
 #if SUPPORT_SPI_FLASH_VENDOR_XMC
+    // Special handling for XMC anomaly where driver strength value is lost.
     case SPI_FLASH_VENDOR_XMC: // 0x20
-      success = is_QE();
-      if (success) {
-        DBG_PRINTF("  QE bit already set.\n");
-      } else {
-        uint32_t status_reg3;
-        SpiFlashOpResult ok0 = spi0_flash_read_status_register_3(&status_reg3);
-        success = set_QE_bit__8_bit_sr2_write(false);
-        if (SPI_FLASH_RESULT_OK == ok0) {
+      {
+        // Backup Status Register-3
+        uint32_t status3 = 0;
+        SpiOpResult ok0 = spi0_flash_read_status_register_3(&status3);
+        success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+        if (SPI_RESULT_OK == ok0) {
           // Copy Driver Strength value from non-volatile to volatile
-          ok0 = spi0_flash_write_status_register_3(status_reg3, false); // volatile
+          ok0 = spi0_flash_write_status_register_3(status3, volatile_bit);
           DBG_PRINTF("  XMC Anomaly: Copy Driver Strength values to volatile status register.\n");
-          if (SPI_FLASH_RESULT_OK != ok0) {
-            DBG_PRINTF("    anomaly handling failed.\n");
+          if (SPI_RESULT_OK != ok0) {
+            DBG_PRINTF("** anomaly handling failed.\n");
           }
         }
       }
-      if (success) DBG_PRINTF("  Volatile QE bit set with 8-bit Write Status Register.\n");
       break;
 #endif
-#if SUPPORT_SPI_FLASH_VENDOR_EON
-    case SPI_FLASH_VENDOR_EON: // 0x1C: // EON
+
+#if SUPPORT_SPI_FLASH__S6_QE_WPDIS
+    // These use bit6 as a QE bit or WPDis
+    case SPI_FLASH_VENDOR_PMC:        // 0x9D aka ISSI - Does not support volatile
+    case SPI_FLASH_VENDOR_MACRONIX:   // 0xC2
+      success = set_S6_QE_WPDis_bit(non_volatile_bit);
+      break;
+
+    case SPI_FLASH_VENDOR_EON:        // 0x1C
+      // NONOS SDK does not handle EON as it does ISSI and Macronix S6 bit.
+      // clear Status Register protection bits, preserves WPDis
+      clear_sr1_mask(0x3Cu);
+
+      // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
+      // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendors,
+      // ISSI and Macronix.
+      // 0x331Cu - Not supported EN25Q32 no S6 bit.
+      // 0x701Cu - EN25QH128A might work
+      //
+      // Match on Device/MFG ignoreing bit capcacity
       if (0x301Cu == (_id & 0x0FFFFu)) {
-        success = is_WPDis_EON();
-        if (success) {
-          DBG_PRINTF("  EN25QxxC: WPDis bit already set.\n");
-        } else {
-          success = set_WPDis_bit_EON();
-          if (success) DBG_PRINTF("  EN25QxxC: Volatile WPDis bit set.\n");
-        }
+        // EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
+        // tested with EN25Q32C
+        success = set_S6_QE_WPDis_bit(volatile_bit);
+        // Could refine to EN25Q32C only by using the presents of SFDP support.
       }
+      // let all others fail.
       break;
 #endif
 
     default:
-      // Try legacy method first.
-      success = is_QE();
-      if (success) {
-        DBG_PRINTF("  QE bit already set.\n");
-      } else {
-        success = set_QE_bit__16_bit_sr1_write(false);
-        if (success) {
-          DBG_PRINTF("  Volatile QE bit set using legacy 16-bit Write Status Register-1.\n");
-        } else {
-          success = set_QE_bit__8_bit_sr2_write(false);
-          if (success) {
-            DBG_PRINTF("  Volatile QE bit set using Write Status Register-2.\n");
-          }
+      // Assume QE bit at S9
+
+      // Primary choice:
+      // 16-bit status register writes is what the ESP8266 BootROM is
+      // expecting the flash to support. "Legacy method" is what I often see
+      // used to descibe the 16-bit status register-1 writes in newer SPI
+      // Flash datasheets. I expect this to work with modules that are
+      // compatibile with SPI Flash Mode: "QIO" or "QOUT".
+      success = set_QE_bit__16_bit_sr1_write(volatile_bit);
+      if (! success) {
+        // Fallback for DIO only modules - some will work / some will not. If
+        // not working, you will need to study the datasheet for the flash on
+        // your module and write a module specific handler.
+        success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+        if (! success) {
+          DBG_PRINTF("** Unable to set volatile QE bit using default handler.\n");
         }
       }
       break;
   }
   spi0_flash_write_disable();
-  DBG_PRINTF("  SPI0 signals '/WP' and '/HOLD' were%s disabled.\n", (success) ? "" : " NOT");
+  DBG_PRINTF("%sSPI0 signals '/WP' and '/HOLD' were%s disabled.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
   return success;
 }

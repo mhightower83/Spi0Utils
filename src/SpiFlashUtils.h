@@ -1,5 +1,7 @@
 /*
   SPI0 Flash Utilities
+
+  Consider PR to add to  .../spi_utils.h
 */
 #ifndef SPIFLASHUTILS_H
 #define SPIFLASHUTILS_H
@@ -9,10 +11,20 @@ extern "C" {
 #endif
 
 // #include <BootROM_NONOS.h>
-#include <spi_flash.h>    // SpiFlashOpResult
+extern SpiFlashOpResult spi_flash_read_status(uint32_t *status);
+#include <spi_flash.h>    // SpiOpResult
 #include <spi_utils.h>
-using experimental::SPI0Command;
+// using experimental::SPI0Command;
+using namespace experimental;
 
+enum SpiFlashStatusRegister {
+    non_volatile_bit = true,
+    volatile_bit = false
+};
+
+//
+// Note NOT all commands listed are universally available on all SPI Flash memory.
+// EN25Q32C noted as an example
 constexpr uint8_t kVolatileWriteEnableCmd     = 0x50u;
 constexpr uint8_t kWriteEnableCmd             = 0x06u;
 constexpr uint8_t kWriteDisableCmd            = 0x04u;
@@ -22,16 +34,26 @@ constexpr uint8_t kResetCmd                   = 0x99u;
 constexpr uint8_t kChipEraseCmd               = 0x60u; // Chip Erase (CE) (C7h or 60h)
 
 constexpr uint8_t kReadStatusRegister1Cmd     = 0x05u;
+// None of these on EN25Q32C
 constexpr uint8_t kReadStatusRegister2Cmd     = 0x35u;
 constexpr uint8_t kReadStatusRegister3Cmd     = 0x15u;
 
+// None of these on EN25Q32C
 constexpr uint8_t kWriteStatusRegister1Cmd    = 0x01u;
 constexpr uint8_t kWriteStatusRegister2Cmd    = 0x31u;
 constexpr uint8_t kWriteStatusRegister3Cmd    = 0x11u;
 
+constexpr uint8_t kPageProgramCmd             = 0x02u;
+constexpr uint8_t kReadDataCmd                = 0x03u;
+constexpr uint8_t kSectorEraseCmd             = 0x20u;
+
+// Conflict on EN25Q32C - (4-4-4) Fast Read Opcode
 constexpr uint8_t kReadUniqueIdCmd            = 0x4Bu;
+
+// The EN25Q32C has a 96-bit Unique ID in the SFDP response at bytes 80h:8Bh (95:00)
 constexpr uint8_t kReadSFDPCmd                = 0x5Au;
 
+// None of these on EN25Q32C
 constexpr uint8_t kProgramSecurityRegisterCmd = 0x42u;
 constexpr uint8_t kEraseSecurityRegisterCmd   = 0x44u;
 constexpr uint8_t kReadSecurityRegisterCmd    = 0x48u;
@@ -42,143 +64,111 @@ constexpr uint8_t kReadSecurityRegisterCmd    = 0x48u;
 // operation and is combined with spi0_flash_write_volatile_enable(), the subsequent
 // write status register operation may save to the non-volatile register.
 
-#if 0 // Use pre command
+#if 0
+// Not needed when using SPI0Command's pre_cmd argument
 inline
-SpiFlashOpResult spi0_flash_write_volatile_enable(void) {
-  return (SpiFlashOpResult)SPI0Command(kVolatileWriteEnableCmd, NULL, 0, 0);
+SpiOpResult spi0_flash_write_volatile_enable(void) {
+  return SPI0Command(kVolatileWriteEnableCmd, NULL, 0, 0);
 }
 inline
-SpiFlashOpResult spi0_flash_write_enable(void) {
-  return (SpiFlashOpResult)SPI0Command(kWriteEnableCmd, NULL, 0, 0);
+SpiOpResult spi0_flash_write_enable(void) {
+  return SPI0Command(kWriteEnableCmd, NULL, 0, 0);
 }
 #endif
 
 
 inline
-SpiFlashOpResult spi0_flash_write_disable() {
-  return (SpiFlashOpResult)SPI0Command(kWriteDisableCmd, NULL, 0, 0);
-}
-
-inline
-SpiFlashOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
-  *pStatus = 0;
-  return (SpiFlashOpResult)SPI0Command(kReadStatusRegister1Cmd, pStatus, 0, 8);
-}
-inline
-SpiFlashOpResult spi0_flash_read_status_register_2(uint32_t *pStatus) {
-  *pStatus = 0;
-  return (SpiFlashOpResult)SPI0Command(kReadStatusRegister2Cmd, pStatus, 0, 8);
-}
-inline
-SpiFlashOpResult spi0_flash_read_status_register_3(uint32_t *pStatus) {
-  *pStatus = 0;
-  return (SpiFlashOpResult)SPI0Command(kReadStatusRegister3Cmd, pStatus, 0, 8);
+SpiOpResult spi0_flash_write_disable() {
+  return SPI0Command(kWriteDisableCmd, NULL, 0, 0);
 }
 
 #if 0
 inline
-SpiFlashOpResult spi0_flash_write_status_register_1(uint32_t status, bool non_volatile, uint32_t numbits = 8) {
-  SpiFlashOpResult ok;
-  uint32_t saved_ps = xt_rsil(15);
-  {
-    if (non_volatile) {
-      ok = spi0_flash_write_enable();
-    } else {
-      // Some SPI Flash parts will write to non-volatile if this was left set from a previous failled write
-      spi0_flash_write_disable();
-      ok = spi0_flash_write_volatile_enable();  // 50h cmd
-    }
-    if (SPI_FLASH_RESULT_OK == ok) ok = (SpiFlashOpResult)SPI0Command(kWriteStatusRegister1Cmd, &status, numbits, 0);
-  }
-  xt_wsr_ps(saved_ps);
-  // Optimization - this is not a high use function.
-  // Always call - save the code of testing for failure of Write
-  spi0_flash_write_disable();
-  return ok;
-}
-
-#else
-inline
-SpiFlashOpResult spi0_flash_write_status_register_1(uint32_t status, bool non_volatile, uint32_t numbits = 8) {
-  SpiFlashOpResult ok;
-
-  uint32_t prefix = kWriteEnableCmd;
-  if (! non_volatile) {
-    spi0_flash_write_disable();
-    prefix = kVolatileWriteEnableCmd;
-  }
-  ok = (SpiFlashOpResult)SPI0Command(kWriteStatusRegister1Cmd, &status, numbits, 0, prefix);
-  // Optimization - this is not a high use function.
-  // Always call - save the code of testing for failure of Write
-  spi0_flash_write_disable();
-  return ok;
-}
-#endif
-
-#if 0
-inline
-SpiFlashOpResult spi0_flash_write_status_register_2(uint32_t status, bool non_volatile) {
-  SpiFlashOpResult ok;
-  uint32_t saved_ps = xt_rsil(15);
-  {
-    if (non_volatile) {
-      ok = spi0_flash_write_enable();
-    } else {
-      spi0_flash_write_disable();
-      ok = spi0_flash_write_volatile_enable();  // 50h cmd
-    }
-    if (SPI_FLASH_RESULT_OK == ok) ok = (SpiFlashOpResult)SPI0Command(kWriteStatusRegister2Cmd, &status, 8, 0);
-  }
-  xt_wsr_ps(saved_ps);
-  spi0_flash_write_disable();
-  return ok;
-}
-
-inline
-SpiFlashOpResult spi0_flash_write_status_register_3(uint32_t status, bool non_volatile) {
-  SpiFlashOpResult ok;
-  uint32_t saved_ps = xt_rsil(15);
-  {
-    if (non_volatile) {
-      ok = spi0_flash_write_enable();
-    } else {
-      spi0_flash_write_disable();
-      ok = spi0_flash_write_volatile_enable();  // 50h cmd
-    }
-    if (SPI_FLASH_RESULT_OK == ok) ok = (SpiFlashOpResult)SPI0Command(kWriteStatusRegister2Cmd, &status, 8, 0);
-  }
-  xt_wsr_ps(saved_ps);
-  spi0_flash_write_disable();
-  return ok;
+SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
+  *pStatus = 0;
+  return SPI0Command(kReadStatusRegister1Cmd, pStatus, 0, 8);
 }
 #else
 inline
-SpiFlashOpResult spi0_flash_write_status_register_2(uint32_t status, bool non_volatile) {
-  SpiFlashOpResult ok;
-  uint32_t prefix = kWriteEnableCmd;
-  if (! non_volatile) {
-    spi0_flash_write_disable();
-    prefix = kVolatileWriteEnableCmd;
-  }
-  ok = (SpiFlashOpResult)SPI0Command(kWriteStatusRegister2Cmd, &status, 8, 0, prefix);
-  spi0_flash_write_disable();
-  return ok;
-}
-
-inline
-SpiFlashOpResult spi0_flash_write_status_register_3(uint32_t status, bool non_volatile) {
-  SpiFlashOpResult ok;
-  uint32_t prefix = kWriteEnableCmd;
-  if (! non_volatile) {
-    spi0_flash_write_disable();
-    prefix = kVolatileWriteEnableCmd;
-  }
-  ok = (SpiFlashOpResult)SPI0Command(kWriteStatusRegister2Cmd, &status, 8, 0, prefix);
-  spi0_flash_write_disable();
-  return ok;
+SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
+  *pStatus = 0;
+  // Use the version provided by the SDK - return enums are the same
+  return (SpiOpResult)spi_flash_read_status(pStatus);
 }
 #endif
 
+inline
+SpiOpResult spi0_flash_read_status_register_2(uint32_t *pStatus) {
+  *pStatus = 0;
+  return SPI0Command(kReadStatusRegister2Cmd, pStatus, 0, 8);
+}
+inline
+SpiOpResult spi0_flash_read_status_register_3(uint32_t *pStatus) {
+  *pStatus = 0;
+  return SPI0Command(kReadStatusRegister3Cmd, pStatus, 0, 8);
+}
+
+inline
+SpiOpResult spi0_flash_write_status_register(uint32_t idx0, uint32_t status, bool non_volatile, uint32_t numbits = 8) {
+  uint32_t prefix = kWriteEnableCmd;
+  if (! non_volatile) {
+    spi0_flash_write_disable();
+    prefix = kVolatileWriteEnableCmd;
+  }
+
+  uint8_t cmd = 0;
+  if (0 == idx0) {
+    cmd = kWriteStatusRegister1Cmd;
+  } else if (1 == idx0) {
+    cmd = kWriteStatusRegister2Cmd;
+  } else if (2 == idx0) {
+    cmd = kWriteStatusRegister3Cmd;
+  }
+
+  SpiOpResult ok0 = SPI0Command(cmd, &status, numbits, 0, prefix);
+  // Optimization - this is not a high use function.
+  // Always call - save the code of testing for failure of Write
+  spi0_flash_write_disable();
+  return ok0;
+}
+
+inline
+SpiOpResult spi0_flash_write_status_register_1(uint32_t status, bool non_volatile, uint32_t numbits=8) {
+  uint32_t prefix = kWriteEnableCmd;
+  if (! non_volatile) {
+    spi0_flash_write_disable();
+    prefix = kVolatileWriteEnableCmd;
+  }
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister1Cmd, &status, numbits, 0, prefix);
+  // Optimization - this is not a high use function.
+  // Always call - save the code of testing for failure of Write
+  spi0_flash_write_disable();
+  return ok0;
+}
+
+inline
+SpiOpResult spi0_flash_write_status_register_2(uint32_t status, bool non_volatile) {
+  uint32_t prefix = kWriteEnableCmd;
+  if (! non_volatile) {
+    spi0_flash_write_disable();
+    prefix = kVolatileWriteEnableCmd;
+  }
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister2Cmd, &status, 8, 0, prefix);
+  spi0_flash_write_disable();
+  return ok0;
+}
+
+inline
+SpiOpResult spi0_flash_write_status_register_3(uint32_t status, bool non_volatile) {
+  uint32_t prefix = kWriteEnableCmd;
+  if (! non_volatile) {
+    spi0_flash_write_disable();
+    prefix = kVolatileWriteEnableCmd;
+  }
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister3Cmd, &status, 8, 0, prefix);
+  spi0_flash_write_disable();
+  return ok0;
+}
 
 struct FlashAddr24 {
   union {
@@ -195,88 +185,65 @@ void spi_set_addr(uint8_t *buf, const uint32_t addr) {
 }
 
 
-SpiFlashOpResult spi0_flash_read_status_registers_2B(uint32_t *pStatus);
-SpiFlashOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus);
+SpiOpResult spi0_flash_read_status_registers_2B(uint32_t *pStatus);
+SpiOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus);
 
 // Concerns:
 // * This function requires the Flash Chip to support legacy 16-bit status register writes.
 // * Some newer Flash Chips only support 8-bit status registry writes (1, 2, 3)
-SpiFlashOpResult spi0_flash_write_status_registers_2B(uint32_t status, bool non_volatile);
+SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status, bool non_volatile);
 
-
-#if 0
 inline
-SpiFlashOpResult spi0_flash_software_reset() {
-  uint32_t save_ps = xt_rsil(15);
-  SpiFlashOpResult ok0 = (SpiFlashOpResult)SPI0Command(kEnableResetCmd, NULL, 0, 0);
-  if (SPI_FLASH_RESULT_OK == ok0) {
-    ok0 = (SpiFlashOpResult)SPI0Command(kResetCmd, NULL, 0, 0);
-    ets_delay_us(20u); // needs 10us (tRST)
-  }
-  xt_wsr_ps(save_ps);
-  return ok0;
-}
-#else
-inline
-SpiFlashOpResult spi0_flash_software_reset() {
-  SpiFlashOpResult ok0 = (SpiFlashOpResult)SPI0Command(kResetCmd, NULL, 0, 0, kEnableResetCmd);
+SpiOpResult spi0_flash_software_reset() {
+  // SPI0Command method is not safe. iCache reads could be attempted within
+  // the 10us (tRST) required to reliable reset.
+  // This should be done out of IRAM with a Cache_Read_Disable_2/
+  // Cache_Read_Enable_2 wrapper.
+  SpiOpResult ok0 = SPI0Command(kResetCmd, NULL, 0, 0, kEnableResetCmd);
   ets_delay_us(20u); // needs 10us (tRST)
   return ok0;
 }
-#endif
 
-#if 0
 inline
-SpiFlashOpResult spi0_flash_chip_erase() {
-  uint32_t save_ps = xt_rsil(15);
-  SpiFlashOpResult ok0 = (SpiFlashOpResult)SPI0Command(kWriteEnableCmd, NULL, 0, 0);
-  if (SPI_FLASH_RESULT_OK == ok0) {
-    ok0 = (SpiFlashOpResult)SPI0Command(kChipEraseCmd, NULL, 0, 0);
-    // On success - At return all is unstable. Running on code cached before the
-    // Flash was erased. When that runs out we crash.
-    if (SPI_FLASH_RESULT_OK == ok0) while(true);
-  }
-  xt_wsr_ps(save_ps);
-  return ok0;
-}
-#else
-inline
-SpiFlashOpResult spi0_flash_chip_erase() {
-  SpiFlashOpResult ok0 = (SpiFlashOpResult)SPI0Command(kChipEraseCmd, NULL, 0, 0, kWriteEnableCmd);
+SpiOpResult spi0_flash_chip_erase() {
+  SpiOpResult ok0 = SPI0Command(kChipEraseCmd, NULL, 0, 0, kWriteEnableCmd);
   // On success - At return, all is unstable. Running on code cached before the
   // Flash was erased. When that runs out we crash.
-  if (SPI_FLASH_RESULT_OK == ok0) while(true);
+  if (SPI_RESULT_OK == ok0) while(true);
   return ok0;
 }
-#endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // common 24 bit address reads with one dummpy byte.
-SpiFlashOpResult _spi0_flash_read_common(uint32_t offset, uint32_t *p, size_t sz, const uint8_t cmd);
+SpiOpResult _spi0_flash_read_common(uint32_t offset, uint32_t *p, size_t sz, const uint8_t cmd);
 
 inline
-SpiFlashOpResult spi0_flash_read_unique_id(uint32_t offset, uint32_t *pUnique16B, size_t sz) {
+SpiOpResult spi0_flash_read_unique_id(uint32_t offset, uint32_t *pUnique16B, size_t sz) {
   return _spi0_flash_read_common(offset, pUnique16B, sz, kReadUniqueIdCmd);
 }
 
 inline
-SpiFlashOpResult spi0_flash_read_unique_id_64(uint32_t *pUnique16B) {
+SpiOpResult spi0_flash_read_unique_id_64(uint32_t *pUnique16B) {
   return spi0_flash_read_unique_id(0, pUnique16B, 8);
 }
 
 inline
-SpiFlashOpResult spi0_flash_read_unique_id_128(uint32_t *pUnique16B) {
+SpiOpResult spi0_flash_read_unique_id_96(uint32_t *pUnique16B) {
+  return spi0_flash_read_unique_id(0, pUnique16B, 12);
+}
+
+inline
+SpiOpResult spi0_flash_read_unique_id_128(uint32_t *pUnique16B) {
   return spi0_flash_read_unique_id(0, pUnique16B, 16);
 }
 
 inline
-SpiFlashOpResult spi0_flash_read_sfdp(uint32_t addr, uint32_t *p, size_t sz) {
+SpiOpResult spi0_flash_read_sfdp(uint32_t addr, uint32_t *p, size_t sz) {
   return _spi0_flash_read_common(addr, p, sz, kReadSFDPCmd);
 }
 
 inline
-SpiFlashOpResult spi0_flash_read_secure_register(uint32_t reg, uint32_t offset,  uint32_t *p, size_t sz) {
+SpiOpResult spi0_flash_read_secure_register(uint32_t reg, uint32_t offset,  uint32_t *p, size_t sz) {
   // reg range {1, 2, 3}
   return _spi0_flash_read_common((reg << 12u) + offset, p, sz, kReadSecurityRegisterCmd);
 }

@@ -1,15 +1,16 @@
 /*
-  With NodeMCU module or similar operating in Flash DIO mode and enable the
-  use of GPIO9 and GPIO10 as outputs without crashing.
+  Goal
+  With NodeMCU module, ESP-12F, or similar operating in Flash DIO mode,
+  enable the use of GPIO9 and GPIO10 as outputs or inputs without crashing.
 
-  At this time I believe, these GPIO pins can only be used safely as outputs.
-  As Inputs, it gets complicated. At power-on reset the ESP8266 may drive these
-  pins. At reset, signals presented at these pins may affect the Flash Chip's
-  ability to operate correctly. Some vendor parts may work others may not.
+  At power-on reset the ESP8266 may drive these pins. At reset, signals
+  presented at these pins may affect the Flash Chip's ability to operate
+  correctly. Some vendor parts may work others may not.
 
   Expect some wiggling of these GPIO pins at boot. GPIO15 has a pull down
-  registor and must be low at boot. This makes it a good pin to use for gateing
-  the GPIO noise output pins 0, 1, 2, 3, 9, 10, and 16 and others that wiggle at boot.
+  resistor and must be low at boot. This makes it a good pin to use for gateing
+  the GPIO noise output pins 0, 1, 2, 3, 9, 10, and 16 and others that wiggle at
+  boot.
 
   When driven, to avoid virtual shorts, GPIO pins should be driven through a
   current limiting resistor.
@@ -17,33 +18,26 @@
   In the case if the EON EN25Q32C (also A and B) Flash Chip, the HOLD# function
   is not connected. When not in QIO operations the DQ3 pin is ignored.
 
-  TXD2      uses GPIO2
   DQ2/WP#   uses GPIO9
   DQ3/HOLD# uses GPIO10
-
-  If capcitive loading is of concern, calculate in the effects of the Flash pin
-  being connected.
 
   Keystroke setup for Flash
   * EON - at least the ones I have
   * Winbond
   * others similar to Winbond
 
-modules:
-  * UseGpioPins_9_10.ino*   // 'void setup() {...}', 'void loop() {...}'
-  * preinit_gpio_9_10.ino   // Makes it run and supports sharing 'preinit();'
-  * ProcessKey.ino          // Hot keys to demo stuff
-  * SpiFlashUtil.*          // Some commonly needed SPI0 Flash CMDs
-  * UartDownload.*          // Not required - just covenant for development
+files:
+  * Reclaim_GPIO_9_10.ino*        // 'void setup() {...}', 'void loop() {...}'
+  * utility_reclaim_gpio_9_10.ino // Makes it run and supports sharing 'preinit();'
+  * ProcessKey.ino                // Hot keys to demo stuff
+  * kStatusRegisterBitDef.h       // Some Status Registry bit definitions
+  * FlashChipId.ino               // Try and report the Flash vendor name.
+  * FlashChipId_D8.h              // Identify an obfuscated Flash memory
+  * SFDP.*                        // dumps the SFDP table
+  * SpiFlashUtil.*                // library
+  * UartDownload.*                // Not required - just covenant for development
 
-
-
-TODO add some Flash read and writes
-
-For Reads look at CRC calculation in ./test/CheckFlash/CheckFlash.ino
-
-Write maybe write to the EEPROM space or last sector of executable space
-
+TODOs
 Turn on WiFi and let the System update the System parameter sectors.
 Maybe RF Calibration is enough.
 Maybe a Flash write after the LEDs update
@@ -52,6 +46,7 @@ Maybe a Flash write after the LEDs update
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
+#include <BootROM_NONOS.h>
 #include <BacktraceLog.h>
 #include <SpiFlashUtils.h>
 #include "kStatusRegisterBitDef.h"
@@ -60,16 +55,16 @@ Maybe a Flash write after the LEDs update
 #define ETS_PRINTF ets_uart_printf
 #define NOINLINE __attribute__((noinline))
 
-// #define DEV_DEBUG
+// #define DEBUG_FLASH_QE
 // #define RECLAIM_GPIO_EARLY
 
 ////////////////////////////////////////////////////////////////////////////////
 // Debug MACROS
-#if defined(RECLAIM_GPIO_EARLY) && defined(DEV_DEBUG)
+#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
 // Printing before "C++" runtime has initialized. Use lower level print functions.
 #define DBG_PRINTF ets_uart_printf
 
-#elif defined(DEV_DEBUG)
+#elif defined(DEBUG_FLASH_QE)
 #define DBG_PRINTF(a, ...) Serial.printf_P(PSTR(a), ##__VA_ARGS__)
 
 #else
@@ -87,6 +82,7 @@ void setup() {
     "\r\n\r\n"
     "Demo: Use with Flash Mode DIO, reclaim GPIO pins 9 and 10.\r\n"
   ));
+  printFlashChipID(Serial);
 
 #if 0 //ndef RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();

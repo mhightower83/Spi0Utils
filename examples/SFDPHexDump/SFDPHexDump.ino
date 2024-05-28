@@ -1,11 +1,14 @@
-/* Standalone version
+/*
+Standalone version - It doesn't require SpiFlashUtils library
 
-  An example using experimental::SPI0Command function to read
-  SPI Flash Data Parameters from flash and hex dump.
+An example using `experimental::SPI0Command` function to read SPI Flash Data
+Parameters from flash and print a hex dump.
 
-  To understand the dump, you will need access to JEDEC documentation. In some
-  cases, the SPI Flash vendor's datasheet will list an explanation of their SFDP
-  data.
+To understand the dump, you will need access to JEDEC documentation. In some
+cases, the SPI Flash vendor's datasheet will list an explanation of their SFDP
+data.
+
+The "SFDP" may be useful for differentiating between some parts.
 
   Reference:
     JEDEC STANDARD Serial Flash Discoverable Parameters
