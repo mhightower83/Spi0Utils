@@ -188,7 +188,7 @@ static bool set_S6_QE_WPDis_bit(bool non_volatile) {
   status = kWPDISBit;
 #endif
   // All changes made to the volatile copies of the Status Register-1.
-  DBG_PRINTF("  Setting %volatile %s bit.\n", (non_volatile) ? "non-" : "", "S6/QE/WPDis");
+  DBG_PRINTF("  Setting %svolatile %s bit.\n", (non_volatile) ? "non-" : "", "S6/QE/WPDis");
   spi0_flash_write_status_register_1(status, non_volatile);
   return is_S6_QE_WPDis();
 }

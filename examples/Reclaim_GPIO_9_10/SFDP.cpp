@@ -1,5 +1,15 @@
 /*
   SPI Flash Data Parameters
+
+  To understand the dump, you will need access to JEDEC documentation. In some
+  cases, the SPI Flash vendor's datasheet will list an explanation of their SFDP
+  data.
+
+  Reference:
+    JEDEC STANDARD Serial Flash Discoverable Parameters
+    https://www.jedec.org/standards-documents/docs/jesd216b
+    Free Download - requires registration
+
 */
 #include <Arduino.h>
 #include "SFDP.h"
