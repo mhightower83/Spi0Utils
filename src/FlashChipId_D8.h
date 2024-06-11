@@ -83,8 +83,6 @@
  Consult JESD216F-02.pdf for SFDP details:
 
  15th DWORD 22:20 - param data not on the CD25Q32C; however, it is on the CD25Q32E.
- Study JEDEC document well - all 8 options cover all the information we need for
- the flash options we have not yet seen.
 
  110b: QE is BIT1 of the SR2.
  Read 1 data byte from SR1 with Read Status instruction 05h.
@@ -93,7 +91,6 @@
  Write one data byte to SR2 with Write Status instruction 31h,
  QE is enabled via Write SR2 with 1 data byte with BIT1 set.
  QE is disabled via Write SR2 with 1 data byte with BIT1 cleared.
-
 
  Non-Volatile/Volatile SR1 powers-up to last value written to the non-volatile
  SR1. For non-volatile SR1, use instruction 06h to enable write to non-volatile
@@ -116,13 +113,14 @@
  set the last 64 are 0xFF... unprogrammed.
  The 2nd Parameter table hints at the MFG being "GigaDevice Semiconductor".
  I get the feeling these parts were never finalized. Also the MFG ID 0xD8 is
- returned by the SPI command 9fh . 0xC8 with one bit picked, 0x10. Easy burned
- to 0 when the parts are ready. Similar to 0xFFs last 64 bits of the unique ID.
+ returned by the SPI command 9fh which is 0xC8 with one bit picked, 0x10. Maybe
+ with some unknown manufactuing tools an easy burn to 0 when the parts are
+ ready. Similar to 0xFFs last 64 bits of the unique ID.
 
  Summary
  -------
 
- Whatever the situation is for this device it does not behave as expected if
+ Whatever the situation is for this device, it does not behave as expected if
  it were a GigaDevice Part. So lets define what we know.
 
  No support for 16-bit write SR1
@@ -138,7 +136,7 @@
      S7    S6    S5    S4    S3    S2    S1    s0   - SR1
                                         WEL   WIP
 
-There is a strong corelation between GigaDevice datasheet and this SFDP, I think
+There is a strong correlation between GigaDevice datasheet and this SFDP, I think
 it is reasonable to use the GigaDevice datasheet for strength values.
 
 DRV1 and DRV0 are assume to be driver strength values. Use the table as defined
@@ -147,7 +145,7 @@ by Winbond and GigaDevice for driver strength percentage value.
 All status registers are accessed as 8-bit only.
 Avoid using any bits not listed.
 
-Assume Unique ID has only 64-bits.
+Assume Unique ID has only 64-bits or don't use.
 
 Software reset 66h, 99h cleared the non-volatile QE bit in the SR2
 

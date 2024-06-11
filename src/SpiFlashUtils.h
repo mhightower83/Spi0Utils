@@ -46,6 +46,7 @@ constexpr uint8_t kWriteStatusRegister3Cmd    = 0x11u;
 constexpr uint8_t kPageProgramCmd             = 0x02u;
 constexpr uint8_t kReadDataCmd                = 0x03u;
 constexpr uint8_t kSectorEraseCmd             = 0x20u;
+constexpr uint8_t kJedecId                    = 0x9Fu;
 
 // Conflict on EN25Q32C - (4-4-4) Fast Read Opcode
 constexpr uint8_t kReadUniqueIdCmd            = 0x4Bu;
@@ -246,6 +247,14 @@ inline
 SpiOpResult spi0_flash_read_secure_register(uint32_t reg, uint32_t offset,  uint32_t *p, size_t sz) {
   // reg range {1, 2, 3}
   return _spi0_flash_read_common((reg << 12u) + offset, p, sz, kReadSecurityRegisterCmd);
+}
+
+// Useful when Flash ID is needed before the NONOS_SDK has initialized.
+inline
+uint32_t alt_spi_flash_get_id(void) {
+  uint32_t _id = 0;
+  SpiOpResult ok0 = SPI0Command(kJedecId, &_id, 0, 24u);
+  return (SPI_RESULT_OK == ok0) ? _id : 0xFFFFFFFFu;
 }
 
 #ifdef __cplusplus

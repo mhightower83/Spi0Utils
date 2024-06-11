@@ -206,7 +206,7 @@ void preinit(void) {
 #ifdef RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
   if (gpio_9_10_available) {
-    // Place GPIO pin initialization as needed
+    // Add additional GPIO pin initializations as needed.
     pinMode(9, INPUT);
     pinMode(10, INPUT);
   }

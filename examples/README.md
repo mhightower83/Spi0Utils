@@ -1,6 +1,8 @@
-# Example Directory Listing
+# Directory Listing for Example
 
 ## [CompatibleQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/CompatibleQE)
+
+For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
 
 Assumes the Flash has compatible QE support
 
@@ -11,11 +13,14 @@ Compatible Flash memory would be like BergMicro, Winbond, XMC, or others that ha
 
 ## [Reclaim_GPIO_9_10](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Reclaim_GPIO_9_10)
 
-A more comprehensive example. It should handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC, GD25QxxE, EON EN25Q32C
+For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
+
+This is a more generalized example. It should handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC, GD25QxxE, EON EN25Q32C
 
 ## [SFDPHexDump](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/SFDPHexDump)
 
-Standalone version - It doesn't require SpiFlashUtils library
+For information gathering, reads and dumps the SFDP.
+Standalone version - It doesn't require the SpiFlashUtils library
 
 An example using `experimental::SPI0Command` function to read SPI Flash Data Parameters from Flash and print a hex dump.
 

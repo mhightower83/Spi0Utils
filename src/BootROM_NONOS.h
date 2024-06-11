@@ -128,7 +128,7 @@ extern void flash_gd25q32c_write_status(uint32_t reg_0idx, uint32_t status);
   SPI_write_enable and SPI_write_status.
   Returns values: SPI_FLASH_RESULT_OK or SPI_FLASH_RESULT_ERR
 
-  Some SPI Flash devices onlu support 8-bit Status Register Writes. They will
+  Some SPI Flash devices only support 8-bit Status Register Writes. They will
   ignore the 16-bit transfer. Observe the WEL bit still set after a write.
 
   This API is not suitable for all SPI Flash memory.
@@ -152,6 +152,8 @@ extern SpiFlashOpResult spi_flash_read_status(uint32_t *status);
 
 
 // Enables iCache. Note, clears previously cached data.
+// Not safe for calling from pre-SDK init
+// Needs SDK init data for map parameter.
 void Cache_Read_Enable_New();
 
 // Places iCache in standby
@@ -167,7 +169,7 @@ void Cache_Read_Enable_2();
   mode. It also requires a blank.bin bit to be set to run.
 
   The Arduino ESP8266 Core has an empty function to replace the default in order
-  to same some IRAM.
+  to save some IRAM.
 */
 void user_spi_flash_dio_to_qio_pre_init(void);
 

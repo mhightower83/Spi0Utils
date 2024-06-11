@@ -15,13 +15,13 @@
     register-1 BIT6. This case is already handled by default unless you supply
     "-DSUPPORT_SPI_FLASH__S6_QE_WPDIS=0" to the build.
 
-  * You may need to write a unique case for your device. We rely on setting
-    Status Register QE bit (S9) to disable the use of /WP and /HOLD pin
-    functions on the Flash Chip. Reconcile this with your SPI Flash Chip
-    datasheet's information.
+  * You may need to write a unique case for your Flash device. We rely on
+    setting Status Register QE bit (S9) to disable the use of /WP and /HOLD pin
+    functions on the Flash. Reconcile this with your SPI Flash datasheet's
+    information.
 
 
-  Setting the non-volatile copy of QE=1 may not always work for every flash
+??  Setting the non-volatile copy of QE=1 may not always work for every flash
   device. The ESP8266 BootROM reads the Flash Mode from the boot image and tries
   to reprogram the non-volatile QE bit. For a Flash Mode of DIO, the BootROM
   will try and set QE=0 with 16-bit Write Status Register-1. Some parts don't
@@ -50,7 +50,6 @@ XMC - SFDP Revision matches up with XM25QH32B datasheet.
 
 GigaDevice
  1. No legacy 16-bit, only 8-bit write status register commands are supported.
- 2. Unkown, if the volatile status registers work on these non-obfuscated parts.
 
 Winbond
  1. My new NodeMCU v1.0 board only works with 16-bit write status register-1.
@@ -82,8 +81,8 @@ bool reclaim_GPIO_9_10();
 // Needed when module is a .cpp
 #include <Arduino.h>
 #include <SpiFlashUtils.h>
-#include "kStatusRegisterBitDef.h"
-#include "FlashChipId_D8.h"
+#include <kStatusRegisterBitDef.h>
+#include <FlashChipId_D8.h>
 
 #define ETS_PRINTF ets_uart_printf
 #ifdef DEBUG_FLASH_QE
@@ -110,53 +109,54 @@ bool reclaim_GPIO_9_10();
 // Handle Freeing up GPIO pins 9 and 10 for various Flash memory chips.
 //
 bool reclaim_GPIO_9_10(void);
-bool set_QE_bit__8_bit_sr2_write(void);
-bool set_QE_bit__16_bit_sr1_write(void);
 
-#if SUPPORT_SPI_FLASH__S6_QE_WPDIS
-bool set_WPDis_bit_EON(void);
-bool clear_WPDis_bit_EON(void);
-#endif
-
-inline bool verify_status_register_1(uint32_t a_bit_mask) {
+inline
+bool verify_status_register_1(uint32_t a_bit_mask) {
   uint32_t status = 0;
   spi0_flash_read_status_register_1(&status);
   return ((a_bit_mask & status) == a_bit_mask);
 }
 
-inline bool verify_status_register_2(uint32_t a_bit_mask) {
+inline
+bool verify_status_register_2(uint32_t a_bit_mask) {
   uint32_t status = 0;
   spi0_flash_read_status_register_2(&status);
   return ((a_bit_mask & status) == a_bit_mask);
 }
 
 // WEL => Write Enable Latch
-inline bool is_WEL(void) {
+inline
+bool is_WEL(void) {
   bool success = verify_status_register_1(kWELBit);
   // DBG_PRINTF("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
   return success;
 }
-inline bool is_WEL_dbg(void) {
+
+inline
+bool is_WEL_dbg(void) {
   bool success = verify_status_register_1(kWELBit);
   ETS_PRINTF("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
   return success;
 }
 
 // WIP => Write In Progress aka Busy
-inline bool is_WIP(void) {
+inline
+bool is_WIP(void) {
   return verify_status_register_1(kWIPBit);
 }
 
 // S6, WPDis => pin Write Protect Disable, maybe only on the EN25Q32C
 // S6, on some devices (ISSI, ) is similar to QE at S9 on others.
-inline bool is_S6_QE_WPDis(void) {
+inline
+bool is_S6_QE_WPDis(void) {
   bool success = verify_status_register_1(kWPDISBit);
   DBG_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (success) ? "confirmed" : "NOT");
   return success;
 }
 
 // QE => Quad Enable, S9
-inline bool is_QE(void) {
+inline
+bool is_QE(void) {
   bool success = verify_status_register_2(kQEBit1B);
   DBG_PRINTF("  %s bit %s set.\n", "QE", (success) ? "confirmed" : "NOT");
   return success;
@@ -165,7 +165,8 @@ inline bool is_QE(void) {
 // Note, there are other SPI registers with bits for other aspects of QUAD
 // support. I chose these.
 // Returns true when SPI0 controler is in either QOUT or QIO mode.
-inline bool is_spi0_quad(void) {
+inline
+bool is_spi0_quad(void) {
   return (0 != ((SPICQIO | SPICQOUT) & SPI0C));
 }
 
@@ -256,10 +257,14 @@ static void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
     DBG_PRINTF("** One time clear of Status Register-%u bits 0x%02X.\n", reg_0idx + 1, pattern);
   }
 }
-inline void clear_sr1_mask(const uint32_t pattern) {
+
+inline
+void clear_sr1_mask(const uint32_t pattern) {
   clear_sr_mask(0, pattern);
 }
-inline void clear_sr2_mask(const uint32_t pattern) {
+
+inline
+void clear_sr2_mask(const uint32_t pattern) {
   clear_sr_mask(1, pattern);
 }
 
@@ -290,7 +295,8 @@ bool reclaim_GPIO_9_10() {
 #endif
   DBG_PRINTF("\n\n\nRun reclaim_GPIO_9_10()\n");
 
-  uint32_t _id = spi_flash_get_id();
+  //+ uint32_t _id = spi_flash_get_id();
+  uint32_t _id = alt_spi_flash_get_id(); // works when SDK has not initialized
   DBG_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
 
   if (is_WEL()) {
@@ -315,6 +321,8 @@ bool reclaim_GPIO_9_10() {
     Additionally there are 11 banks of 128 manufactures. Our extracted vendor
     value is one of 11 possible vendors. We do not have an exact match. I have
     not seen any way to ID the bank.
+
+    A false ID is possible!
   */
   uint32_t vendor = 0xFFu & _id;
   switch (vendor) {
@@ -337,7 +345,7 @@ bool reclaim_GPIO_9_10() {
     case SPI_FLASH_VENDOR_MYSTERY_D8: // 0xD8, Mystery Vendor
       // NONOS SDK does not handle MYSTERY_D8
       // clear Status Register protection bits
-      clear_sr1_mask(0x7Cu);  // 0x0x83u Clear BP4, BP3, BP2, BP1, and BP0
+      clear_sr1_mask(0x7Cu);  // Clear BP4, BP3, BP2, BP1, and BP0
       clear_sr2_mask(0x40u);  // Clear CMP
 
       success = set_QE_bit__8_bit_sr2_write(volatile_bit);
