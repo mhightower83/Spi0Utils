@@ -10,14 +10,19 @@
   Status Register-1.
 */
 #include <ESP8266WiFi.h>
-#include <SpiFlashUtils.h>
+
+#define ETS_PRINTF(a, ...) Serial.printf_P(PSTR(a), ##__VA_ARGS__)
 
 #if defined(DEBUG_FLASH_QE)
 #define DBG_PRINTF(a, ...) Serial.printf_P(PSTR(a), ##__VA_ARGS__)
 #else
 #define DBG_PRINTF(...) do {} while (false)
 #endif
+#include <SpiFlashUtils.h>
 
+
+
+#if 0 //D delete
 ////////////////////////////////////////////////////////////////////////////////
 // Some QE utilities
 constexpr uint32_t kQEBit1B  = BIT1;  // Enable QE=1, disables WP# and HOLD#
@@ -61,6 +66,11 @@ static bool set_QE_bit__16_bit_sr1_write(bool non_volatile) {
   spi0_flash_write_status_registers_2B(status, non_volatile);
   return is_QE();
 }
+#endif
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Print popular Flash Chip IDs
 #ifndef SPI_FLASH_VENDOR_BERGMICRO
@@ -121,18 +131,25 @@ void setup() {
 
   bool success = set_QE_bit__16_bit_sr1_write(volatile_bit);
   Serial.printf("  %s - Set Quad Enable bit with 16-bit Status Register-1 Write\n", (success) ? "Success" : "Failed");
-  if (! success) Serial.printf("  Check Flash Chip compatibility\n");
+  if (! success) Serial.printf("  Unexpected results, Check Flash Chip compatibility\n");
 
   // This shows that after a Software Reset that the QE bit is cleared when the
   // BootROM runs again. BootROM Status Register Writes are always non-volatile.
   // Then, we turn volatile copy back on. The question is does this create wear
-  // on the Flash? Since we didn't change to value of the non-volatile copy I
+  // on the Flash? Since we didn't change the value of the non-volatile copy I
   // assume not. I would hope that writing a matching value back to non-volatile
   // space is a no-op.
 }
 
 void testGpio9Gpio10() {
   ETS_PRINTF("  Test: QE=%c, GPIO pins 9 and 10 as INPUT\n", is_QE() ? '1' : '0');
+  /*
+    For this test you want to connect two pull down resistors to pins 9 and 10
+    and observe the result when this test is run. If the Sketch crashes and
+    reboots  GPIO9 and GPIO10 have not been properly freed.
+    `set_QE_bit__16_bit_sr1_write()` in `setup()` may not be correct for your
+    Flash memory or you forgot to compile with SPI Mode: DIO.
+  */
   pinMode(9, INPUT);
   pinMode(10, INPUT);
   ETS_PRINTF("  digitalRead result: GPIO_9(%u) and GPIO_10(%u)\n", digitalRead(9), digitalRead(10));
@@ -153,7 +170,7 @@ void cmdLoop(Print& oStream, int key) {
     //
     case '3':
       {
-        oStream.printf("\nRead Flash Status Registers: 1, 2, and 3\n")
+        oStream.printf("\nRead Flash Status Registers: 1, 2, and 3\n");
         uint32_t status = 0;
         SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
         if (SPI_RESULT_OK == ok0) {

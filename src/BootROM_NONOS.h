@@ -42,7 +42,7 @@ int SPI_read_status(SpiFlashChip *chip, uint32_t *status);
 
   ** BUGBUG - they should have limited the test to the WIP (busy), BIT0, bit.
   Other bits in the status could legitimately be on.
-  The Return result should be ignored it is meaningless. **
+  IMO The Return result should be ignored it is meaningless. **
 
   uint32_t Wait_SPI_Idle(SpiFlashChip *fc);
 */
@@ -151,7 +151,8 @@ extern SpiFlashOpResult spi_flash_read_status(uint32_t *status);
 
 
 
-// Enables iCache. Note, clears previously cached data.
+// Enables iCache.
+// Note, Cache_Read_Disable/Cache_Read_Enable_New clears previously cached data.
 // Not safe for calling from pre-SDK init
 // Needs SDK init data for map parameter.
 void Cache_Read_Enable_New();
@@ -168,8 +169,8 @@ void Cache_Read_Enable_2();
   With out the default handler these SPI Flash memories cannot operate in QIO
   mode. It also requires a blank.bin bit to be set to run.
 
-  The Arduino ESP8266 Core has an empty function to replace the default in order
-  to save some IRAM.
+  The Arduino ESP8266 Core has an empty function to replace the default in
+  order to save some IRAM.
 */
 void user_spi_flash_dio_to_qio_pre_init(void);
 

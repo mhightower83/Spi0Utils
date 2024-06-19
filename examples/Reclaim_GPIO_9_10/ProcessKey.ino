@@ -7,38 +7,10 @@ bool use_S6 = false;
 bool use_16_bit = false;
 bool has_volatile = false;
 
-void testGpio9Gpio10() {
-  bool has_QE = false;
-  char bit = '?';
-  if (use_S9) {
-    has_QE = is_QE();
-    bit = '9';
-  } else
-  if (use_S6) {
-    has_QE = is_S6_QE_WPDis();
-    bit = '6';
-  }
-
-  ETS_PRINTF("  Test: QE/S%c=%c, GPIO pins 9 and 10 as INPUT\n", bit, (has_QE) ? '1' : '0');
-  pinMode(9, INPUT);
-  pinMode(10, INPUT);
-  ETS_PRINTF("  digitalRead result: GPIO_9(%u) and GPIO_10(%u)\n", digitalRead(9), digitalRead(10));
-  delay(10);
-
-  ETS_PRINTF("  Test: QE/S%c=%c, GPIO pins 9 and 10 as OUTPUT set LOW\n", bit, (has_QE) ? '1' : '0');
-  pinMode(9, OUTPUT);       // was /HOLD
-  pinMode(10, OUTPUT);      // was /WP
-  digitalWrite(9, LOW);     // Failure when part is put on hold and WDT Reset occurs or an exception
-  digitalWrite(10, LOW);
-  delay(10);
-
-  if (has_QE) {
-    ETS_PRINTF("  Passed - have not crashed\n"); // No WDT Reset - then it passed.
-  } else {
-    ETS_PRINTF("* Ambiguous results. QE=0 and we did not crash. Flash may not support /HOLD.\n");
-  }
-}
-
+// Modal
+bool qe_was_preset = false;
+bool write_status_register_16_bit = true;
+uint32_t mode_qe_bit = 9u;
 
 ////////////////////////////////////////////////////////////////////////////////
 // SFDP
@@ -103,7 +75,14 @@ union SFDP_REVISION get_sfdp_revision() {
 ////////////////////////////////////////////////////////////////////////////////
 // Analyze Status Registers available and write modes.
 //
-// Rely on WEL bit left on when a status register is not supported.
+// WEL, Write Enable Latch, is turned on with the SPI instruction 06h. Most
+// write instructions require the WEL bit set in the status register before a
+// write operation. Once WEL is set, the next write instruction will clear it.
+// If the write instruction is not valid, the WEL bit is still set. We rely on
+// WEL bit left on when a status register is not supported. Or the bit length of
+// the instruction is wrong for this Flash device.
+//
+// Thus we can detect if the register exist and the required length of the write.
 //
 bool test_sr_8_bit_write(uint32_t reg_0idx) {
   // No change write
@@ -154,6 +133,14 @@ bool test_sr1_16_bit_write() {
 /*
   Analyze Flash Status Registers for possible support for QE.
   Discover which status registers are available and how they need to be accessed.
+
+  Assumptions made:
+  * if 16-bit status register write works, then the QE bit is S9
+  * if SR1 and SR2 exist then QE bit is S9
+  * if SR2 does not exist and SR1 does exist then QE bit is S6
+  * flash that use S15 for QE bit are not paired with the ESP8266.
+    * These parts require a unique read and write instruction 3Fh/3Eh for SR2.
+    * I don't see any support for these in esptool.py
 */
 bool analyzeSR_QE(Print& oStream) {
   oStream.println(F("\nTesting Status Register writes:"));
@@ -161,7 +148,7 @@ bool analyzeSR_QE(Print& oStream) {
   bool sr2_8  = test_sr_8_bit_write(1);
   bool sr3_8  = test_sr_8_bit_write(2);
   bool sr1_16 = test_sr1_16_bit_write();
-  spi0_flash_write_disable(); // Cleanup
+  spi0_flash_write_disable(); // WEL Cleanup
 
   oStream.println(F("\nFlash Info Summary:"));
   printFlashChipID(Serial);
@@ -210,7 +197,7 @@ void analyzeSR_QEVolatile(Print& oStream) {
   if (use_S9 || use_S6) {
     oStream.printf_P(PSTR("\nTesting for volatile Status Register write support using QE/%s\n"), (use_S9) ? "S9" : "S6");
   } else {
-    oStream.printf_P(PSTR("\bNo Evidence of QE support detected.\n"));
+    oStream.printf_P(PSTR("\nNo Evidence of QE support detected.\n"));
     return;
   }
 
@@ -237,6 +224,7 @@ void analyzeSR_QEVolatile(Print& oStream) {
         oStream.printf_P(PSTR("  S9 volatile Status Register write support confirmed.\n"));
       }
     }
+
   } else
   if (use_S6) {
     uint32_t sr1 = 0;
@@ -255,21 +243,60 @@ void analyzeSR_QEVolatile(Print& oStream) {
       }
     }
   }
+
   if (! has_volatile)
     oStream.printf_P(PSTR("* Volatile Status Register writes not supported.\n"));
 }
+
+void printAllSRs(Print& oStream) {
+  uint32_t status = 0;
+  SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
+  if (SPI_RESULT_OK == ok0) {
+    oStream.printf_P(PSTR("  spi0_flash_read_status_registers_3B(0x%06X)\n"), status);
+    if (kQEBit2B == (status & kQEBit2B)) oStream.printf_P(PSTR("    QE=1\n"));
+    if (kWELBit  == (status & kWELBit))  oStream.printf_P(PSTR("    WEL=1\n"));
+  } else {
+    oStream.printf_P(PSTR("  spi0_flash_read_status_registers_3B() failed!\n"));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-// Modal
-bool write_status_register_16_bit = false;
 
 void cmdLoop(Print& oStream, int key) {
   switch (key) {
-    case 's':
+    case '8':
+      write_status_register_16_bit = false;
+      oStream.printf_P(PSTR("%s 8 - Modal:  8-bits Write Status Register\r\n"), (write_status_register_16_bit) ? " " : ">");
+      break;
+    case '7':
+      write_status_register_16_bit = true;
+      oStream.printf_P(PSTR("%s 7 - Modal: 16-bits Write Status Register\r\n"), (write_status_register_16_bit) ? ">" : " ");
+      break;
+    case '6':
+      mode_qe_bit = 6u;
+      oStream.printf_P(PSTR("%s 6 - Modal: S6/QE Status Register\r\n"), (6u == mode_qe_bit) ? ">" : " ");
+      break;
+    case '9':
+      mode_qe_bit = 9u;
+      oStream.printf_P(PSTR("%s 9 - Modal: S9/QE Status Register\r\n"), (9u == mode_qe_bit) ? ">" : " ");
+      break;
+    case '5':
+      qe_was_preset = (qe_was_preset) ? false : true;
+      oStream.printf_P(PSTR("%s 5 - Modal: Use values as set for tests\r\n"), (qe_was_preset) ? ">" : " ");
+      break;
+
+    case 'a':
       if (analyzeSR_QE(oStream)) {
+        if (use_S6) {
+          mode_qe_bit = 6u;
+        } else
+        if (use_S9) {
+          mode_qe_bit = 9u;
+        } else {
+          mode_qe_bit = 0xFFu;  // undefined
+        }
+        write_status_register_16_bit = use_16_bit;
         analyzeSR_QEVolatile(oStream);
       }
       break;
@@ -279,16 +306,22 @@ void cmdLoop(Print& oStream, int key) {
       break;
 
     case 'v':
-      oStream.println(F("\nRunning GPIO9 and GPIO10 verification test"));
-      oStream.println(F("Test GPIO9 and GPIO10 with 'pinMode()' for INPUT and OUTPUT operation"));
-      testGpio9Gpio10();
+      testInput_GPIO9_GPIO10(oStream, mode_qe_bit, write_status_register_16_bit, (has_volatile) ? volatile_bit : non_volatile_bit, qe_was_preset);
       break;
 
-    // case 'w':
-    //   oStream.println(F("\nRunning pin function /WP disabled verification test"));
-    //   oStream.println(F("Set GPIO10 with 'pinMode() to OUTPUT and confirm writes work when LOW."));
-    //   test_GPIO10_write();
-    //   break;
+    // Use settings found from analyze or those selected previously through the
+    // menu.
+    case 'w':
+      test_set_SRP0(oStream, mode_qe_bit, write_status_register_16_bit, volatile_bit, qe_was_preset);
+      printAllSRs(oStream);
+      testOutputGPIO10(oStream, mode_qe_bit, write_status_register_16_bit, (has_volatile) ? volatile_bit : non_volatile_bit, qe_was_preset);
+      test_clear_SR1(oStream, mode_qe_bit, write_status_register_16_bit, volatile_bit, qe_was_preset);
+      printAllSRs(oStream);
+      break;
+    // "
+    case 'h':
+      testOutputGPIO9(oStream, mode_qe_bit, write_status_register_16_bit, (has_volatile) ? volatile_bit : non_volatile_bit, qe_was_preset);
+      break;
 
 
     // Evaluate S9 as
@@ -305,42 +338,44 @@ void cmdLoop(Print& oStream, int key) {
         SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
         oStream.printf("\n%d = spi0_flash_read_status_registers_3B(0x%06X)%s\n", ok0, status, (SPI_RESULT_OK == ok0) ? "" : " - failed!\n");
         bool non_volatile = ('Q' == key) || ('q' == key);
+
         uint32_t val = 0x00u;
         if (write_status_register_16_bit) {
-          if ('Q' == key || 'E' == key) val = 0x0200u;
+          if ('Q' == key || 'E' == key) val = (9u == mode_qe_bit) ? BIT9 : BIT6;
           ok0 = spi0_flash_write_status_registers_2B(val, non_volatile);
           oStream.printf("\n%d = spi0_flash_write_status_registers_2B(0x%02X, %s)%s\n", ok0, val, (non_volatile) ? "non-volatile" : "volatile", (SPI_RESULT_OK == ok0) ? "" : " - failed!\n");
         } else {
-          if ('Q' == key || 'E' == key) val = 0x02u;
-          ok0 = spi0_flash_write_status_register_2(val, non_volatile);
+          if ('Q' == key || 'E' == key) val = (9u == mode_qe_bit) ? BIT9 >> 8u : BIT6;
+          if (9u == mode_qe_bit) {
+            ok0 = spi0_flash_write_status_register_2(val, non_volatile);
+          } else {
+            ok0 = spi0_flash_write_status_register_1(val, non_volatile);
+          }
           oStream.printf("\n%d = spi0_flash_write_status_register_2(0x%02X, %s)%s\n", ok0, val, (non_volatile) ? "non-volatile" : "volatile", (SPI_RESULT_OK == ok0) ? "" : " - failed!\n");
         }
+
         ok0 = spi0_flash_read_status_registers_3B(&status);
         oStream.printf("\n%d = spi0_flash_read_status_registers_3B(0x%06X)%s\n", ok0, status, (SPI_RESULT_OK == ok0) ? "" : " - failed!\n");
       }
       break;
 
     case 'r':
-      oStream.println(F("Test call to reclaim_GPIO_9_10()"));
-      reclaim_GPIO_9_10();
+      if (qe_was_preset || gpio_9_10_available) {
+        oStream.println(F("reclaim_GPIO_9_10() has already been called. Reboot to run again."));
+      } else {
+        oStream.println(F("Test call to reclaim_GPIO_9_10()"));
+        gpio_9_10_available = reclaim_GPIO_9_10();
+      }
+      qe_was_preset = true;
       break;
 
     case '3':
-      {
-        uint32_t status = 0;
-        SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
-        if (SPI_RESULT_OK == ok0) {
-          ETS_PRINTF("\nspi0_flash_read_status_registers_3B(0x%06X)\n", status);
-          if (kQEBit2B == (status & kQEBit2B)) ETS_PRINTF("  QE=1\n");
-          if (kWELBit  == (status & kWELBit))  ETS_PRINTF("  WEL=1\n");
-        } else {
-          ETS_PRINTF("\nspi0_flash_read_status_registers_3B() failed!\n");
-        }
-      }
+      printAllSRs(oStream);
       break;
 
     case 'R':
       oStream.println(F("Restart ..."));
+      test_clear_SR1(oStream, mode_qe_bit, write_status_register_16_bit, volatile_bit, qe_was_preset);
       oStream.flush();
       ESP.restart();
       break;
@@ -373,27 +408,49 @@ void cmdLoop(Print& oStream, int key) {
       break;
 
     case '?':
-      oStream.println(F("\r\nHot key help:"));
-      oStream.println(F("  3 - SPI Flash Read Status Registers, 3 Bytes"));
-      oStream.println(F("  s - Test Status Register Writes"));
-      oStream.println(F("  f - Print SFDP Data"));
-      oStream.println(F("  r - Test call to 'reclaim_GPIO_9_10()'"));
-      oStream.println(F("  v - Test GPIO9 and GPIO10 with 'pinMode()' for INPUT and OUTPUT operation"));
-      // oStream.println(F("  w - Test GPIO10 with 'pinMode() for OUTPUT and confirm writes work when LOW"));
+      oStream.printf_P(PSTR("\r\nHot key help:\r\n"));
+      oStream.printf_P(PSTR("  3 - SPI Flash Read Status Registers, 3 Bytes\r\n"));
+      oStream.printf_P(PSTR("  a - Analyze Status Register Writes and set selection flags accordingly\r\n"));
+      oStream.printf_P(PSTR("  f - Print SFDP Data\r\n"));
       oStream.println();
-      oStream.printf_P(PSTR("  8 - Set Write Status Register-2 Mode, 8-bits %s\r\n"), (write_status_register_16_bit) ? "" : "<");
-      oStream.printf_P(PSTR("  6 - Set Write Status Register-1 Mode, 16-bits %s\r\n"), (write_status_register_16_bit) ? "<" : "");
-      oStream.println(F("  Q - Test, non-volatile, set WEL then set QE=1"));
-      oStream.println(F("  q - Test, non-volatile, set WEL then set QE=0"));
-      oStream.println(F("  E - Test, volatile 50h, then set QE=1"));
-      oStream.println(F("  e - Test, volatile 50h, then set QE=0"));
+      oStream.printf_P(PSTR("%s 8 - Modal:  8-bits Write Status Register\r\n"), (write_status_register_16_bit) ? " " : ">");
+      oStream.printf_P(PSTR("%s 7 - Modal: 16-bits Write Status Register\r\n"), (write_status_register_16_bit) ? ">" : " ");
+      oStream.printf_P(PSTR("%s 6 - Modal: S6/QE Status Register\r\n"), (6u == mode_qe_bit) ? ">" : " ");
+      oStream.printf_P(PSTR("%s 9 - Modal: S9/QE Status Register\r\n"), (9u == mode_qe_bit) ? ">" : " ");
+      oStream.printf_P(PSTR("%s 5 - Modal: Use values as set for test preset values\r\n"), (qe_was_preset) ? ">" : " ");
       oStream.println();
-      oStream.println(F("  d - Clear WEL bit, write enable"));
-      oStream.println(F("  S - SPI Flash - Software Reset 66h, 99h"));
-      oStream.println(F("  R - Restart"));
-      oStream.println(F("  ? - This help message\r\n"));
+      oStream.printf_P(PSTR("  Q - Set SR, non-volatile WEL 06h, then set QE/S%u=1\r\n"), mode_qe_bit);
+      oStream.printf_P(PSTR("  q - Set SR, non-volatile WEL 06h, then set QE/S%u=0\r\n"), mode_qe_bit);
+      oStream.printf_P(PSTR("  E - Set SR, volatile 50h, then set QE/S%u=1\r\n"), mode_qe_bit);
+      oStream.printf_P(PSTR("  e - Set SR, volatile 50h, then set QE/S%u=0\r\n"), mode_qe_bit);
+      oStream.println();
+      oStream.printf_P(PSTR("  h - Test /HOLD digitalWrite( 9, LOW)\r\n"));
+      oStream.printf_P(PSTR("  w - Test /WP   digitalWrite(10, LOW) and write to Flash\r\n"));
+      oStream.printf_P(PSTR("  v - Test GPIO9 and GPIO10 INPUT\r\n"));
+      oStream.printf_P(PSTR("%s r - Test call to 'reclaim_GPIO_9_10()'%s\r\n"), (gpio_9_10_available) ? ">" : " ", (gpio_9_10_available) ? " - already called" : "");
+      oStream.println();
+      oStream.printf_P(PSTR("  d - Clear WEL bit, write enable\r\n"));
+      oStream.printf_P(PSTR("  S - SPI Flash - Software Reset 66h, 99h\r\n"));
+      oStream.printf_P(PSTR("  R - Restart\r\n"));
+      oStream.printf_P(PSTR("  ? - This help message\r\n"));
       break;
+/*
+  Test /WP
+    * digitalWrite(10, LOW);
+  Test /HOLD
+    * digitalWrite(9, LOW);
 
+  Mode:  8-bit Write SR
+  Mode: 16-bit Write SR
+  Mode: QE/S6
+  Mode  QE/S9
+
+  Set QE/S9
+  Clear QE/S9
+
+  Set QE/S6
+  Clear QE/S6
+*/
     default:
       break;
   }

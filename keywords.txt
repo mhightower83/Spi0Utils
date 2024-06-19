@@ -20,13 +20,33 @@
 # Datatypes & Classes (KEYWORD1)
 #######################################
 
+GD25Q32C_status	KEYWORD1
 SpiFlashStatusRegister	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
 
+Cache_Read_Disable	KEYWORD2
+Cache_Read_Disable_2	KEYWORD2
+Cache_Read_Enable_2	KEYWORD2
+Cache_Read_Enable_New	KEYWORD2
+Disable_QMode	KEYWORD2
+Enable_QMode	KEYWORD2
+SPI_read_status	KEYWORD2
+SPI_write_status	KEYWORD2
+Wait_SPI_Idle	KEYWORD2
 _spi0_flash_read_common	KEYWORD2
+alt_spi_flash_get_id	KEYWORD2
+clear_sr1_mask	KEYWORD2
+clear_sr2_mask	KEYWORD2
+flash_gd25q32c_enable_QIO_mode	KEYWORD2
+is_QE	KEYWORD2
+is_S6_QE_WPDis	KEYWORD2
+is_WEL	KEYWORD2
+is_WEL_dbg	KEYWORD2
+is_WIP	KEYWORD2
+is_spi0_quad	KEYWORD2
 spi0_flash_chip_erase	KEYWORD2
 spi0_flash_read_secure_register	KEYWORD2
 spi0_flash_read_sfdp	KEYWORD2
@@ -48,18 +68,34 @@ spi0_flash_write_status_register_2	KEYWORD2
 spi0_flash_write_status_register_3	KEYWORD2
 spi0_flash_write_status_registers_2B	KEYWORD2
 spi0_flash_write_volatile_enable	KEYWORD2
+spi_flash_enable_qmode	KEYWORD2
+spi_flash_issi_enable_QIO_mode	KEYWORD2
 spi_set_addr	KEYWORD2
+user_spi_flash_dio_to_qio_pre_init	KEYWORD2
+verify_status_register_1	KEYWORD2
+verify_status_register_2	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
 
+BOOTROM_NONOS_H	LITERAL1
+GD25Q32C_STATUS1=0	LITERAL1
+GD25Q32C_STATUS2=1	LITERAL1
+GD25Q32C_STATUS3=2	LITERAL1
+K_STATUS_REGISTER_BIT_DEF_H	LITERAL1
+PRESERVE_EXISTING_STATUS_BITS	LITERAL1
 SPIFLASHUTILS_H	LITERAL1
+SPI_FLASH_VENDOR_MYSTERY_D8	LITERAL1
 kChipEraseCmd	LITERAL1
 kEnableResetCmd	LITERAL1
 kEraseSecurityRegisterCmd	LITERAL1
+kJedecId	LITERAL1
+kMysteryId_D8	LITERAL1
 kPageProgramCmd	LITERAL1
 kProgramSecurityRegisterCmd	LITERAL1
+kQEBit1B	LITERAL1
+kQEBit2B	LITERAL1
 kReadDataCmd	LITERAL1
 kReadSFDPCmd	LITERAL1
 kReadSecurityRegisterCmd	LITERAL1
@@ -70,6 +106,9 @@ kReadUniqueIdCmd	LITERAL1
 kResetCmd	LITERAL1
 kSectorEraseCmd	LITERAL1
 kVolatileWriteEnableCmd	LITERAL1
+kWELBit	LITERAL1
+kWIPBit	LITERAL1
+kWPDISBit	LITERAL1
 kWriteDisableCmd	LITERAL1
 kWriteEnableCmd	LITERAL1
 kWriteStatusRegister1Cmd	LITERAL1
