@@ -15,7 +15,7 @@ Compatible Flash memory would be like BergMicro, Winbond, XMC, or others that ha
 
 For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
 
-This is a more generalized example. It should handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC, GD25QxxE, EON EN25Q32C
+This is a more comprehensive example. It should handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC, GD25QxxE, EON EN25Q32C
 
 ## [SFDPHexDump](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/SFDPHexDump)
 
@@ -34,3 +34,13 @@ Reference:
   https://www.jedec.org/standards-documents/docs/jesd216b
   Free Download - requires registration
 ```
+
+## [Streaker](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Streaker)
+
+Uses a kludged together non-OS wrapper for running some code with the bare necessities.
+This is not a true Arduino Sketch. It is closer to a low-level ESP8266 program running with some code fragments from the BootROM, NONOS SDK, and Arduino ESP8266.
+Use build option MMU:"16K Cache + 48K IRAM"
+
+This unorthodox Sketch generates low jitter signals for viewing on an oscilloscope.
+Specifically for viewing ringing, rise, and fall times of GPIO pins.
+This probably doesn't belong here; however, It need a home for archiving purposes.

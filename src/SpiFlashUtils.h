@@ -10,12 +10,16 @@
 extern "C" {
 #endif
 
-// #include <BootROM_NONOS.h>
 extern SpiFlashOpResult spi_flash_read_status(uint32_t *status);
 #include <spi_flash.h>    // SpiOpResult
 #include <spi_utils.h>
 // using experimental::SPI0Command;
 using namespace experimental;
+
+// Dropout unused debug printfs
+#ifndef DBG_SFU_PRINTF
+#define DBG_SFU_PRINTF(...) do {} while (false)
+#endif
 
 enum SpiFlashStatusRegister {
     non_volatile_bit = true,
@@ -269,6 +273,7 @@ uint32_t alt_spi_flash_get_id(void) {
 // Less general and more specific Flash operations
 // Maybe this should be a separate .h
 //
+#include "BootROM_NONOS.h"
 
 #ifndef PRESERVE_EXISTING_STATUS_BITS
 // It may be best to not preserve existing Flash Status Register Bits.
@@ -282,6 +287,19 @@ uint32_t alt_spi_flash_get_id(void) {
 #define PRESERVE_EXISTING_STATUS_BITS 0
 #endif
 
+#if defined(DEBUG_FLASH_QE) && !defined(DBG_SFU_PRINTF)
+#define DBG_SFU_PRINTF ets_uart_printf
+#endif
+
+#ifndef DBG_SFU_PRINTF
+#define DBG_SFU_PRINTF(...) do {} while (false)
+#endif
+
+constexpr uint32_t kWIPBit   = BIT0;  // Write In Progress
+constexpr uint32_t kWELBit   = BIT1;  // Write Enable Latch
+constexpr uint32_t kWPDISBit = BIT6;  // Disable /WP pin
+constexpr uint32_t kQEBit1B  = BIT1;  // Enable QE=1, disables WP# and HOLD#
+constexpr uint32_t kQEBit2B  = BIT9;  // Enable QE=1, disables WP# and HOLD#
 
 inline
 bool verify_status_register_1(uint32_t a_bit_mask) {
@@ -301,14 +319,14 @@ bool verify_status_register_2(uint32_t a_bit_mask) {
 inline
 bool is_WEL(void) {
   bool success = verify_status_register_1(kWELBit);
-  // DBG_PRINTF("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
+  // DBG_SFU_PRINTF("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
   return success;
 }
 
 inline
 bool is_WEL_dbg(void) {
   bool success = verify_status_register_1(kWELBit);
-  ETS_PRINTF("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
+  ets_uart_printf("  %s bit %s set.\n", "WEL", (success) ? "confirmed" : "NOT");
   return success;
 }
 
@@ -323,7 +341,7 @@ bool is_WIP(void) {
 inline
 bool is_S6_QE_WPDis(void) {
   bool success = verify_status_register_1(kWPDISBit);
-  DBG_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (success) ? "confirmed" : "NOT");
+  DBG_SFU_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (success) ? "confirmed" : "NOT");
   return success;
 }
 
@@ -331,7 +349,7 @@ bool is_S6_QE_WPDis(void) {
 inline
 bool is_QE(void) {
   bool success = verify_status_register_2(kQEBit1B);
-  DBG_PRINTF("  %s bit %s set.\n", "QE", (success) ? "confirmed" : "NOT");
+  DBG_SFU_PRINTF("  %s bit %s set.\n", "QE", (success) ? "confirmed" : "NOT");
   return success;
 }
 
@@ -349,11 +367,12 @@ bool is_spi0_quad(void) {
 // see RTOS_SDK/components/spi_flash/src/spi_flash.c
 // Don't rely on that Espressif sample too closely. The data shown for EN25Q16A
 // is not correct. The EN25Q16A and EN25Q16B do no support SFDP.
+[[maybe_unused]]
 static bool set_S6_QE_WPDis_bit(bool non_volatile) {
   uint32_t status = 0;
   spi0_flash_read_status_register_1(&status);
   bool is_set = (0 != (status & kWPDISBit));
-  DBG_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (is_set) ? "confirmed" : "NOT");
+  DBG_SFU_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (is_set) ? "confirmed" : "NOT");
   if (is_set) return true;
 
 #if PRESERVE_EXISTING_STATUS_BITS
@@ -364,7 +383,7 @@ static bool set_S6_QE_WPDis_bit(bool non_volatile) {
   status = kWPDISBit;
 #endif
   // All changes made to the volatile copies of the Status Register-1.
-  DBG_PRINTF("  Setting %svolatile %s bit.\n", (non_volatile) ? "non-" : "", "S6/QE/WPDis");
+  DBG_SFU_PRINTF("  Setting %svolatile %s bit.\n", (non_volatile) ? "non-" : "", "S6/QE/WPDis");
   spi0_flash_write_status_register_1(status, non_volatile);
   return is_S6_QE_WPDis();
 }
@@ -374,7 +393,7 @@ static bool clear_S6_QE_WPDis_bit(void) {
   uint32_t status = 0;
   spi0_flash_read_status_register_1(&status);
   bool not_set = (0 == (status & kWPDISBit));
-  DBG_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (not_set) ? "NOT" : "confirmed");
+  DBG_SFU_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (not_set) ? "NOT" : "confirmed");
   if (not_set) return true;
 
 #if PRESERVE_EXISTING_STATUS_BITS
@@ -385,17 +404,18 @@ static bool clear_S6_QE_WPDis_bit(void) {
   status = 0;
 #endif
   // All changes made to the volatile copies of the Status Register-1.
-  DBG_PRINTF("  Clearing volatile S6/QE/WPDis bit - 8-bit write.\n");
+  DBG_SFU_PRINTF("  Clearing volatile S6/QE/WPDis bit - 8-bit write.\n");
   spi0_flash_write_status_register_1(status, false);
   return (false == is_S6_QE_WPDis());
 }
 #endif
 
+[[maybe_unused]]
 static bool set_QE_bit__8_bit_sr2_write(bool non_volatile) {
   uint32_t status2 = 0;
   spi0_flash_read_status_register_2(&status2);
   bool is_set = (0 != (status2 & kQEBit1B));
-  DBG_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
+  DBG_SFU_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
   if (is_set) return true;
 
 #if PRESERVE_EXISTING_STATUS_BITS
@@ -405,16 +425,17 @@ static bool set_QE_bit__8_bit_sr2_write(bool non_volatile) {
   // to zero without much care we assume they can all be zero at the startup.
   status2 = kQEBit1B;
 #endif
-  DBG_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 8u);
+  DBG_SFU_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 8u);
   spi0_flash_write_status_register_2(status2, non_volatile);
   return is_QE();
 }
 
+[[maybe_unused]]
 static bool set_QE_bit__16_bit_sr1_write(bool non_volatile) {
   uint32_t status = 0;
   spi0_flash_read_status_registers_2B(&status);
   bool is_set = (0 != (status & kQEBit2B));
-  DBG_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
+  DBG_SFU_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
   if (is_set) return true;
 
 #if PRESERVE_EXISTING_STATUS_BITS
@@ -424,18 +445,19 @@ static bool set_QE_bit__16_bit_sr1_write(bool non_volatile) {
   // to zero without much care we assume they can all be zero at the startup.
   status = kQEBit2B;
 #endif
-  DBG_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 16u);
+  DBG_SFU_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 16u);
   spi0_flash_write_status_registers_2B(status, non_volatile);
   return is_QE();
 }
 
+[[maybe_unused]]
 static void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
   uint32_t status = flash_gd25q32c_read_status(reg_0idx);
   if (pattern & status) {
     status &= ~pattern;
     flash_gd25q32c_write_status(reg_0idx, status); // 8-bit status register write
     // This message should not repeat at next boot
-    DBG_PRINTF("** One time clear of Status Register-%u bits 0x%02X.\n", reg_0idx + 1, pattern);
+    DBG_SFU_PRINTF("** One time clear of Status Register-%u bits 0x%02X.\n", reg_0idx + 1, pattern);
   }
 }
 

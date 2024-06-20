@@ -10,73 +10,29 @@
   Status Register-1.
 */
 #include <ESP8266WiFi.h>
+#define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
+#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
 
-#define ETS_PRINTF(a, ...) Serial.printf_P(PSTR(a), ##__VA_ARGS__)
-
+// These control informative messages from the library SpiFlashUtils
 #if defined(DEBUG_FLASH_QE)
-#define DBG_PRINTF(a, ...) Serial.printf_P(PSTR(a), ##__VA_ARGS__)
+#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
 #else
-#define DBG_PRINTF(...) do {} while (false)
+#define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
 #include <SpiFlashUtils.h>
 
 
-
-#if 0 //D delete
-////////////////////////////////////////////////////////////////////////////////
-// Some QE utilities
-constexpr uint32_t kQEBit1B  = BIT1;  // Enable QE=1, disables WP# and HOLD#
-constexpr uint32_t kQEBit2B  = BIT9;  // Enable QE=1, disables WP# and HOLD#
-
-inline bool verify_status_register_2(uint32_t a_bit_mask) {
-  uint32_t status = 0;
-  SpiOpResult ok0 = spi0_flash_read_status_register_2(&status);
-  if (SPI_RESULT_OK == ok0) {
-    return ((a_bit_mask & status) == a_bit_mask);
-  }
-  return false;
-}
-
-// QE => Quad Enable, S9
-inline bool is_QE(void) {
-  bool success = verify_status_register_2(kQEBit1B);
-  DBG_PRINTF("  %s bit %s set.\n", "QE", (success) ? "confirmed" : "NOT");
-  return success;
-}
-
-inline bool is_spi0_quad(void) {
-  return (0 != ((SPICQIO | SPICQOUT) & SPI0C));
-}
-
-static bool set_QE_bit__16_bit_sr1_write(bool non_volatile) {
-  uint32_t status = 0;
-  spi0_flash_read_status_registers_2B(&status);
-  bool is_set = (0 != (status & kQEBit2B));
-  DBG_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
-  if (is_set) return true;
-
-  // The argument for not preseving existing bits "we don't know what we don't know"
-  // I am leaning toward preserving; however, early setup code tends not to.
-#if PRESERVE_EXISTING_STATUS_BITS
-  status |= kQEBit2B;
-#else
-  status = kQEBit2B;
-#endif
-  DBG_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 16u);
-  spi0_flash_write_status_registers_2B(status, non_volatile);
-  return is_QE();
-}
-#endif
-
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Print popular Flash Chip IDs
-#ifndef SPI_FLASH_VENDOR_BERGMICRO
+
 // missing from spi_vendors.h
+#ifndef SPI_FLASH_VENDOR_BERGMICRO
 #define SPI_FLASH_VENDOR_BERGMICRO  0xE0u
+#endif
+#ifndef SPI_FLASH_VENDOR_ZBIT
 #define SPI_FLASH_VENDOR_ZBIT       0x5Eu
+#endif
+#ifndef SPI_FLASH_VENDOR_MYSTERY_D8
 #define SPI_FLASH_VENDOR_MYSTERY_D8 0xD8u
 #endif
 
@@ -94,7 +50,7 @@ struct FlashList {
 {SPI_FLASH_VENDOR_UNKNOWN,      /* 0xFF */    "unknown"}
 };
 
-void printFlashChipID(Print& sio) {
+void printFlashChipID() {
  // These lookups matchup to vendors commonly thought to exist on ESP8266 Modules.
  // Unfortunatlly the information returned from spi_flash_get_id() does not
  // indicate a unique vendor. There can only be 128 vendors per bank. And, there
@@ -108,30 +64,30 @@ void printFlashChipID(Print& sio) {
      break;
    }
  }
- sio.printf("  %-12s 0x%06x, '%s'\r\n", "Device ID:", deviceId, vendor);
+ Serial.PRINTF_LN("  %-12s 0x%06x, '%s'", "Device ID:", deviceId, vendor);
 }
 ////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
   Serial.begin(115200);
   delay(100);
-  Serial.printf(
+  Serial.PRINTF_LN(
     "\r\n\r\n"
     "Demo: Test reclaim GPIO pins 9 and 10 logic with QIO compliant target module.\r\n"
     "  Compatible Flash: BergMicro, Winbond, XMC, or ZBit"
   );
 
-  printFlashChipID(Serial);
+  printFlashChipID();
 
   if (is_spi0_quad()) {
-    Serial.printf("  Demo cannot run. SPI0 Controler is configured for a QUAD mode\n");
-    Serial.printf("  Reflash with build set for: SPI Flash Mode: \"DIO\"\n");
+    Serial.PRINTF_LN("  Demo cannot run. SPI0 Controler is configured for a QUAD mode");
+    Serial.PRINTF_LN("  Reflash with build set for: SPI Flash Mode: \"DIO\"");
     return;
   }
 
   bool success = set_QE_bit__16_bit_sr1_write(volatile_bit);
-  Serial.printf("  %s - Set Quad Enable bit with 16-bit Status Register-1 Write\n", (success) ? "Success" : "Failed");
-  if (! success) Serial.printf("  Unexpected results, Check Flash Chip compatibility\n");
+  Serial.PRINTF_LN("  %s - Set Quad Enable bit with 16-bit Status Register-1 Write", (success) ? "Success" : "Failed");
+  if (! success) Serial.PRINTF_LN("  Unexpected results, Check Flash Chip compatibility");
 
   // This shows that after a Software Reset that the QE bit is cleared when the
   // BootROM runs again. BootROM Status Register Writes are always non-volatile.
@@ -142,7 +98,7 @@ void setup() {
 }
 
 void testGpio9Gpio10() {
-  ETS_PRINTF("  Test: QE=%c, GPIO pins 9 and 10 as INPUT\n", is_QE() ? '1' : '0');
+  Serial.PRINTF_LN("  Test: QE=%c, GPIO pins 9 and 10 as INPUT", is_QE() ? '1' : '0');
   /*
     For this test you want to connect two pull down resistors to pins 9 and 10
     and observe the result when this test is run. If the Sketch crashes and
@@ -152,54 +108,54 @@ void testGpio9Gpio10() {
   */
   pinMode(9, INPUT);
   pinMode(10, INPUT);
-  ETS_PRINTF("  digitalRead result: GPIO_9(%u) and GPIO_10(%u)\n", digitalRead(9), digitalRead(10));
+  Serial.PRINTF_LN("  digitalRead result: GPIO_9(%u) and GPIO_10(%u)", digitalRead(9), digitalRead(10));
   delay(10);
 
-  ETS_PRINTF("  Test: QE=%c, GPIO pins 9 and 10 as OUTPUT set LOW\n", is_QE() ? '1' : '0');
+  Serial.PRINTF_LN("  Test: QE=%c, GPIO pins 9 and 10 as OUTPUT set LOW", is_QE() ? '1' : '0');
   pinMode(9, OUTPUT);       // was /HOLD
   pinMode(10, OUTPUT);      // was /WP
   digitalWrite(9, LOW);     // Failure when part is put on hold and WDT Reset occurs or an exception
   digitalWrite(10, LOW);
   // TODO: add write function to confirm digitalWrite(10, LOW) works OK
   delay(10);
-  ETS_PRINTF("  Passed - have not crashed\n"); // No WDT Reset - then it passed.
+  Serial.PRINTF_LN("  Passed - have not crashed"); // No WDT Reset - then it passed.
 }
 
-void cmdLoop(Print& oStream, int key) {
+void cmdLoop(int key) {
   switch (key) {
     //
     case '3':
       {
-        oStream.printf("\nRead Flash Status Registers: 1, 2, and 3\n");
+        Serial.PRINTF_LN("\nRead Flash Status Registers: 1, 2, and 3");
         uint32_t status = 0;
         SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
         if (SPI_RESULT_OK == ok0) {
-          oStream.printf("  spi0_flash_read_status_registers_3B(0x%06X)\n", status);
-          if (kQEBit2B == (status & kQEBit2B)) ETS_PRINTF("  QE=1\n");
-          if (kWELBit  == (status & kWELBit))  ETS_PRINTF("  WEL=1\n");
+          Serial.PRINTF_LN("  spi0_flash_read_status_registers_3B(0x%06X)", status);
+          if (kQEBit2B == (status & kQEBit2B)) Serial.PRINTF_LN("  QE=1");
+          if (kWELBit  == (status & kWELBit))  Serial.PRINTF_LN("  WEL=1");
         } else {
-          oStream.printf("  spi0_flash_read_status_registers_3B() failed!\n");
+          Serial.PRINTF_LN("  spi0_flash_read_status_registers_3B() failed!");
         }
       }
       break;
     //
     case 't':
-      oStream.println(F("Run simple GPIO9 and GPIO10 test ..."));
+      Serial.PRINTF_LN("Run simple GPIO9 and GPIO10 test ...");
       testGpio9Gpio10();
       break;
     //
     case 'R':
-      oStream.println(F("Restart ..."));
-      oStream.flush();
+      Serial.PRINTF_LN("Restart ...");
+      Serial.flush();
       ESP.restart();
       break;
     //
     case '?':
-      oStream.println(F("\r\nHot key help:"));
-      oStream.println(F("  3 - SPI Flash Read Status Registers, 3 Bytes"));
-      oStream.println(F("  t - Run GPIO9 and GPIO10 test ..."));
-      oStream.println(F("  R - Restart"));
-      oStream.println(F("  ? - This help message\r\n"));
+      Serial.PRINTF_LN("\r\nHot key help:");
+      Serial.PRINTF_LN("  3 - SPI Flash Read Status Registers, 3 Bytes");
+      Serial.PRINTF_LN("  t - Run GPIO9 and GPIO10 test ...");
+      Serial.PRINTF_LN("  R - Restart");
+      Serial.PRINTF_LN("  ? - This help message");
       break;
     //
     default:
@@ -210,6 +166,6 @@ void cmdLoop(Print& oStream, int key) {
 void loop() {
   if (0 < Serial.available()) {
     char hotKey = Serial.read();
-    cmdLoop(Serial, hotKey);
+    cmdLoop(hotKey);
   }
 }

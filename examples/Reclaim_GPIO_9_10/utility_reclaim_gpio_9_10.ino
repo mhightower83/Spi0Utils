@@ -94,19 +94,21 @@ EON
 #if 0
 // Needed when module is a .cpp
 #include <Arduino.h>
-#include <SpiFlashUtils.h>
-#include <BootROM_NONOS.h>
-#include <kStatusRegisterBitDef.h>
-#include <FlashChipId_D8.h>
 
+// These control informative messages from the library SpiFlashUtils.h
+#ifdef DEBUG_FLASH_QE
+#define DBG_SFU_PRINTF ets_uart_printf
+#else
+#define DBG_SFU_PRINTF(...) do {} while (false)
+#endif
+#endif
+#include <SpiFlashUtils.h>
+
+//D #include <BootROM_NONOS.h>
+//D #include <kStatusRegisterBitDef.h>
+//D #include <FlashChipId_D8.h>
 #ifndef ETS_PRINTF
 #define ETS_PRINTF ets_uart_printf
-#endif
-#ifdef DEBUG_FLASH_QE
-#define DBG_PRINTF ets_uart_printf
-#else
-#define DBG_PRINTF(...) do {} while (false)
-#endif
 #endif
 
 #ifndef SUPPORT_MYSTERY_VENDOR_D8
@@ -128,18 +130,18 @@ bool reclaim_GPIO_9_10() {
   pinMode(1, SPECIAL);
   uart_buff_switch(0);
 #endif
-  DBG_PRINTF("\n\n\nRun reclaim_GPIO_9_10()\n");
+  DBG_SFU_PRINTF("\n\n\nRun reclaim_GPIO_9_10()\n");
 
   //+ uint32_t _id = spi_flash_get_id();
   uint32_t _id = alt_spi_flash_get_id(); // works when SDK has not initialized
-  DBG_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
+  DBG_SFU_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
 
   if (is_WEL()) {
     // Most likely left over from BootROM's attempt to update the Flash Status Register.
     // Common event for SPI Flash that don't support 16-bit Write Status Register-1.
     // Seen with EON's EN25Q32C, GigaDevice and Mystery Vendor 0xD8. These
     // do not support 16-bit write status register-1.
-    DBG_PRINTF("  Detected: a previous write failed. The WEL bit is still set.\n");
+    DBG_SFU_PRINTF("  Detected: a previous write failed. The WEL bit is still set.\n");
     spi0_flash_write_disable();
   }
 
@@ -147,7 +149,7 @@ bool reclaim_GPIO_9_10() {
 
   // SPI0 must be in DIO or DOUT mode to continue.
   if (is_spi0_quad()) {
-    DBG_PRINTF("  GPIO pins 9 and 10 are not available when configured for SPI Flash Modes: \"QIO\" or \"QOUT\"\n");
+    DBG_SFU_PRINTF("  GPIO pins 9 and 10 are not available when configured for SPI Flash Modes: \"QIO\" or \"QOUT\"\n");
     return false;
   }
 
@@ -199,9 +201,9 @@ bool reclaim_GPIO_9_10() {
         if (SPI_RESULT_OK == ok0) {
           // Copy Driver Strength value from non-volatile to volatile
           ok0 = spi0_flash_write_status_register_3(status3, volatile_bit);
-          DBG_PRINTF("  XMC Anomaly: Copy Driver Strength values to volatile status register.\n");
+          DBG_SFU_PRINTF("  XMC Anomaly: Copy Driver Strength values to volatile status register.\n");
           if (SPI_RESULT_OK != ok0) {
-            DBG_PRINTF("** anomaly handling failed.\n");
+            DBG_SFU_PRINTF("** anomaly handling failed.\n");
           }
         }
       }
@@ -253,12 +255,20 @@ bool reclaim_GPIO_9_10() {
         // your module and write a module specific handler.
         success = set_QE_bit__8_bit_sr2_write(volatile_bit);
         if (! success) {
-          DBG_PRINTF("** Unable to set volatile QE bit using default handler.\n");
+          DBG_SFU_PRINTF("** Unable to set volatile QE bit using default handler.\n");
         }
       }
       break;
   }
   spi0_flash_write_disable();
-  DBG_PRINTF("%sSPI0 signals '/WP' and '/HOLD' were%s disabled.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
+  DBG_SFU_PRINTF("%sSPI0 signals '/WP' and '/HOLD' were%s disabled.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
+  // Set GPIOs to Arduino defaults
+  if (success) {
+    pinMode(9, INPUT);
+    pinMode(10, INPUT);
+  }
+#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
+  pinMode(1, INPUT);      // restore back to default
+#endif
   return success;
 }

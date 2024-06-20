@@ -1,5 +1,5 @@
 /*
-Standalone version - It doesn't require SpiFlashUtils library
+Standalone version - It doesn't require the addition of SpiFlashUtils library
 
 An example using `experimental::SPI0Command` function to read SPI Flash Data
 Parameters from flash and print a hex dump.

@@ -2,26 +2,21 @@
   SPI0 Flash Utilities
 */
 #include <Arduino.h>
-
 extern "C" {
-  #include "SpiFlashUtils.h"
-  using experimental::SPI0Command;
-};
 
-// #define DEBUG_FLASH_QE 1
-
-#define ETS_PRINTF ets_uart_printf
 #define NOINLINE __attribute__((noinline))
 
 #ifdef DEBUG_FLASH_QE
-#define DBG_PRINTF ets_uart_printf
+#define DBG_SFU_PRINTF ets_uart_printf
 #define DBG_NOINLINE __attribute__((noinline))
 #else
-#define DBG_PRINTF(...) do {} while (false)
+#define DBG_SFU_PRINTF(...) do {} while (false)
 #define DBG_NOINLINE
 #endif
+#include "SpiFlashUtils.h"
+using experimental::SPI0Command;
 
-extern "C" {
+
 ////////////////////////////////////////////////////////////////////////////////
 // base function see .h
 // common logic, 24 bit address reads with one dummpy byte.
@@ -73,12 +68,12 @@ SpiOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus) {
 SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status16, bool non_volatile) {
   // Assume the flash supports 2B write if the SPIC2BSE bit is set.
   if (0 == (SPI0C & SPIC2BSE)) {
-    DBG_PRINTF("\n* 2 Byte Status Write not enabled\n");
+    DBG_SFU_PRINTF("\n* 2 Byte Status Write not enabled\n");
     // Let them try. If it fails, it will be discovered on verify.
     // All updates should/must be verified.
     // return SPI_RESULT_ERR;
   } else {
-    DBG_PRINTF("  2 Byte Status Write enabled\n");
+    DBG_SFU_PRINTF("  2 Byte Status Write enabled\n");
   }
 
   // Winbond supports, some GD devices do not.

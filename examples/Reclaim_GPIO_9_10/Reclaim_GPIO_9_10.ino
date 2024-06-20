@@ -46,30 +46,31 @@ Maybe a Flash write after the LEDs update
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <BootROM_NONOS.h>
 #include <BacktraceLog.h>
-#include <SpiFlashUtils.h>
-#include "kStatusRegisterBitDef.h"
-#include "FlashChipId_D8.h"
+
+// Use these build options in Reclaim_GPIO_9_10.ino.globals.h
+// -Ddefine DEBUG_FLASH_QE=1
+// -DRECLAIM_GPIO_EARLY=1
+
 
 #define ETS_PRINTF ets_uart_printf
-#define NOINLINE __attribute__((noinline))
-
-// #define DEBUG_FLASH_QE
-// #define RECLAIM_GPIO_EARLY
+#define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
+#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Debug MACROS
+// These control informative messages from the library SpiFlashUtils
 #if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
 // Printing before "C++" runtime has initialized. Use lower level print functions.
-#define DBG_PRINTF ets_uart_printf
-
+#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
 #elif defined(DEBUG_FLASH_QE)
-#define DBG_PRINTF(a, ...) Serial.printf_P(PSTR(a), ##__VA_ARGS__)
-
+#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
 #else
-#define DBG_PRINTF(...) do {} while (false)
+#define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
+#include <SpiFlashUtils.h>
+
+#define NOINLINE __attribute__((noinline))
 
 
 extern bool gpio_9_10_available;
