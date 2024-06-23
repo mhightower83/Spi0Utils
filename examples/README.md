@@ -1,5 +1,17 @@
 # Directory Listing for Example
 
+## [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline)
+
+An outline example of using Reclaim GPIOs
+
+Shows reclaiming GPIOs from preinit() or setup()
+
+
+## [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom)
+
+Similar to "Outline" above. Illustrates adding support for an additional Flash part. Provides a hypothetical custom handler for EN25QH128A by supplying replacement function: `spi_flash_vendor_cases()`
+
+
 ## [CompatibleQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/CompatibleQE)
 
 For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
@@ -11,13 +23,17 @@ Others will require more effort. However, this starts us off with a simple examp
 
 Compatible Flash memory would be like BergMicro, Winbond, XMC, or others that have the QE bit at S9 in the Flash Status Register and support 16-bit Write Status Register-1.
 
+
 ## [Reclaim_GPIO_9_10](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Reclaim_GPIO_9_10)
 
 For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
 
 This is a more comprehensive example. It should handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC, GD25QxxE, EON EN25Q32C
 
+
 ## [SFDPHexDump](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/SFDPHexDump)
+
+Probe the Flash for SFDP data
 
 For information gathering, reads and dumps the SFDP.
 Standalone version - It doesn't require the SpiFlashUtils library
@@ -26,7 +42,7 @@ An example using `experimental::SPI0Command` function to read SPI Flash Data Par
 
 To understand the dump, you will need access to JEDEC documentation. In some cases, the SPI Flash vendor's datasheet will list an explanation of their SFDP data.
 
-The "SFDP" may be useful for differentiating between some parts.
+The "SFDP" may be used to discern between parts at different revision levels.
 
 Reference:
 ```

@@ -1,4 +1,6 @@
 /*
+Probe the Flash for SFDP data
+
 Standalone version - It doesn't require the addition of SpiFlashUtils library
 
 An example using `experimental::SPI0Command` function to read SPI Flash Data

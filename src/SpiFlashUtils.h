@@ -6,20 +6,25 @@
 #ifndef SPIFLASHUTILS_H
 #define SPIFLASHUTILS_H
 
+#if ((1 - DEBUG_FLASH_QE - 1) == 2)
+#undef DEBUG_FLASH_QE
+#define DEBUG_FLASH_QE 0
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern SpiFlashOpResult spi_flash_read_status(uint32_t *status);
+extern SpiFlashOpResult spi_flash_read_status(uint32_t *status); // NONOS_SDK
 #include <spi_flash.h>    // SpiOpResult
 #include <spi_utils.h>
-// using experimental::SPI0Command;
-using namespace experimental;
 
 // Dropout unused debug printfs
 #ifndef DBG_SFU_PRINTF
 #define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
+
+namespace experimental {
 
 enum SpiFlashStatusRegister {
     non_volatile_bit = true,
@@ -114,7 +119,7 @@ SpiOpResult spi0_flash_read_status_register_3(uint32_t *pStatus) {
 }
 
 inline
-SpiOpResult spi0_flash_write_status_register(uint32_t idx0, uint32_t status, bool non_volatile, uint32_t numbits = 8) {
+SpiOpResult spi0_flash_write_status_register(const uint32_t idx0, uint32_t status, const bool non_volatile, const uint32_t numbits = 8) {
   uint32_t prefix = kWriteEnableCmd;
   if (! non_volatile) {
     spi0_flash_write_disable();
@@ -138,7 +143,7 @@ SpiOpResult spi0_flash_write_status_register(uint32_t idx0, uint32_t status, boo
 }
 
 inline
-SpiOpResult spi0_flash_write_status_register_1(uint32_t status, bool non_volatile, uint32_t numbits=8) {
+SpiOpResult spi0_flash_write_status_register_1(uint32_t status, const bool non_volatile, const uint32_t numbits=8) {
   uint32_t prefix = kWriteEnableCmd;
   if (! non_volatile) {
     spi0_flash_write_disable();
@@ -152,7 +157,7 @@ SpiOpResult spi0_flash_write_status_register_1(uint32_t status, bool non_volatil
 }
 
 inline
-SpiOpResult spi0_flash_write_status_register_2(uint32_t status, bool non_volatile) {
+SpiOpResult spi0_flash_write_status_register_2(uint32_t status, const bool non_volatile) {
   uint32_t prefix = kWriteEnableCmd;
   if (! non_volatile) {
     spi0_flash_write_disable();
@@ -164,7 +169,7 @@ SpiOpResult spi0_flash_write_status_register_2(uint32_t status, bool non_volatil
 }
 
 inline
-SpiOpResult spi0_flash_write_status_register_3(uint32_t status, bool non_volatile) {
+SpiOpResult spi0_flash_write_status_register_3(uint32_t status, const bool non_volatile) {
   uint32_t prefix = kWriteEnableCmd;
   if (! non_volatile) {
     spi0_flash_write_disable();
@@ -196,7 +201,7 @@ SpiOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus);
 // Concerns:
 // * This function requires the Flash Chip to support legacy 16-bit status register writes.
 // * Some Flash Chips only support 8-bit status registry writes (1, 2, 3)
-SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status, bool non_volatile);
+SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status, const bool non_volatile);
 
 inline
 SpiOpResult spi0_flash_software_reset() {
@@ -220,35 +225,35 @@ SpiOpResult spi0_flash_chip_erase() {
 
 ////////////////////////////////////////////////////////////////////////////////
 // common 24 bit address reads with one dummpy byte.
-SpiOpResult _spi0_flash_read_common(uint32_t offset, uint32_t *p, size_t sz, const uint8_t cmd);
+SpiOpResult _spi0_flash_read_common(const uint32_t offset, uint32_t *p, const size_t sz, const uint8_t cmd);
 
 inline
-SpiOpResult spi0_flash_read_unique_id(uint32_t offset, uint32_t *pUnique16B, size_t sz) {
+SpiOpResult spi0_flash_read_unique_id(const uint32_t offset, uint32_t *pUnique16B, const size_t sz) {
   return _spi0_flash_read_common(offset, pUnique16B, sz, kReadUniqueIdCmd);
 }
 
 inline
 SpiOpResult spi0_flash_read_unique_id_64(uint32_t *pUnique16B) {
-  return spi0_flash_read_unique_id(0, pUnique16B, 8);
+  return spi0_flash_read_unique_id(0, pUnique16B, 8u);
 }
 
 inline
 SpiOpResult spi0_flash_read_unique_id_96(uint32_t *pUnique16B) {
-  return spi0_flash_read_unique_id(0, pUnique16B, 12);
+  return spi0_flash_read_unique_id(0, pUnique16B, 12u);
 }
 
 inline
 SpiOpResult spi0_flash_read_unique_id_128(uint32_t *pUnique16B) {
-  return spi0_flash_read_unique_id(0, pUnique16B, 16);
+  return spi0_flash_read_unique_id(0, pUnique16B, 16u);
 }
 
 inline
-SpiOpResult spi0_flash_read_sfdp(uint32_t addr, uint32_t *p, size_t sz) {
+SpiOpResult spi0_flash_read_sfdp(const uint32_t addr, uint32_t *p, const size_t sz) {
   return _spi0_flash_read_common(addr, p, sz, kReadSFDPCmd);
 }
 
 inline
-SpiOpResult spi0_flash_read_secure_register(uint32_t reg, uint32_t offset,  uint32_t *p, size_t sz) {
+SpiOpResult spi0_flash_read_secure_register(const uint32_t reg, const uint32_t offset,  uint32_t *p, const size_t sz) {
   // reg range {1, 2, 3}
   return _spi0_flash_read_common((reg << 12u) + offset, p, sz, kReadSecurityRegisterCmd);
 }
@@ -287,7 +292,7 @@ uint32_t alt_spi_flash_get_id(void) {
 #define PRESERVE_EXISTING_STATUS_BITS 0
 #endif
 
-#if defined(DEBUG_FLASH_QE) && !defined(DBG_SFU_PRINTF)
+#if DEBUG_FLASH_QE && ! defined(DBG_SFU_PRINTF)
 #define DBG_SFU_PRINTF ets_uart_printf
 #endif
 
@@ -302,14 +307,14 @@ constexpr uint32_t kQEBit1B  = BIT1;  // Enable QE=1, disables WP# and HOLD#
 constexpr uint32_t kQEBit2B  = BIT9;  // Enable QE=1, disables WP# and HOLD#
 
 inline
-bool verify_status_register_1(uint32_t a_bit_mask) {
+bool verify_status_register_1(const uint32_t a_bit_mask) {
   uint32_t status = 0;
   spi0_flash_read_status_register_1(&status);
   return ((a_bit_mask & status) == a_bit_mask);
 }
 
 inline
-bool verify_status_register_2(uint32_t a_bit_mask) {
+bool verify_status_register_2(const uint32_t a_bit_mask) {
   uint32_t status = 0;
   spi0_flash_read_status_register_2(&status);
   return ((a_bit_mask & status) == a_bit_mask);
@@ -361,14 +366,13 @@ bool is_spi0_quad(void) {
   return (0 != ((SPICQIO | SPICQOUT) & SPI0C));
 }
 
-#if SUPPORT_SPI_FLASH__S6_QE_WPDIS
 // Only for EN25Q32C, earlier version may not work.
 // Maybe add SFDP call to validate EN25Q32C part.
 // see RTOS_SDK/components/spi_flash/src/spi_flash.c
 // Don't rely on that Espressif sample too closely. The data shown for EN25Q16A
 // is not correct. The EN25Q16A and EN25Q16B do no support SFDP.
 [[maybe_unused]]
-static bool set_S6_QE_WPDis_bit(bool non_volatile) {
+static bool set_S6_QE_WPDis_bit(const bool non_volatile) {
   uint32_t status = 0;
   spi0_flash_read_status_register_1(&status);
   bool is_set = (0 != (status & kWPDISBit));
@@ -408,10 +412,9 @@ static bool clear_S6_QE_WPDis_bit(void) {
   spi0_flash_write_status_register_1(status, false);
   return (false == is_S6_QE_WPDis());
 }
-#endif
 
 [[maybe_unused]]
-static bool set_QE_bit__8_bit_sr2_write(bool non_volatile) {
+static bool set_QE_bit__8_bit_sr2_write(const bool non_volatile) {
   uint32_t status2 = 0;
   spi0_flash_read_status_register_2(&status2);
   bool is_set = (0 != (status2 & kQEBit1B));
@@ -431,7 +434,7 @@ static bool set_QE_bit__8_bit_sr2_write(bool non_volatile) {
 }
 
 [[maybe_unused]]
-static bool set_QE_bit__16_bit_sr1_write(bool non_volatile) {
+static bool set_QE_bit__16_bit_sr1_write(const bool non_volatile) {
   uint32_t status = 0;
   spi0_flash_read_status_registers_2B(&status);
   bool is_set = (0 != (status & kQEBit2B));
@@ -471,6 +474,7 @@ void clear_sr2_mask(const uint32_t pattern) {
   clear_sr_mask(1, pattern);
 }
 
+};  // namespace experimental {
 
 #ifdef __cplusplus
 }

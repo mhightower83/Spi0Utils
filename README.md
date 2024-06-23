@@ -1,11 +1,14 @@
 # SPI0 Flash Utilities
 
-## Status: WIP and working
+## Status: WIP
+* working
+* code comments need updating
+* Example Reclaim... needs refactoring and retesting
 
 This library was created during the process of working out how to reclaim the use of GPIO pins 9 and 10.
 A lot of operations were generalized and put into `SpiFlashUtils.h`.
 
-For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
+For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU DEV boards.
 See [Reclaiming GPIO9 and GPIO10](https://github.com/mhightower83/Arduino-ESP8266-misc/wiki/Pins-GPIO9-and-GPIO10) for a more detailed explanation.
 
 For how to use, see [examples](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples#readme).

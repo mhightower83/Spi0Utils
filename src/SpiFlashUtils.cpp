@@ -2,25 +2,27 @@
   SPI0 Flash Utilities
 */
 #include <Arduino.h>
+#if ((1 - DEBUG_FLASH_QE - 1) == 2)
+#undef DEBUG_FLASH_QE
+#define DEBUG_FLASH_QE 0
+#endif
+
 extern "C" {
 
-#define NOINLINE __attribute__((noinline))
-
-#ifdef DEBUG_FLASH_QE
+#if DEBUG_FLASH_QE
 #define DBG_SFU_PRINTF ets_uart_printf
-#define DBG_NOINLINE __attribute__((noinline))
 #else
 #define DBG_SFU_PRINTF(...) do {} while (false)
-#define DBG_NOINLINE
 #endif
 #include "SpiFlashUtils.h"
 using experimental::SPI0Command;
 
+namespace experimental {
 
 ////////////////////////////////////////////////////////////////////////////////
 // base function see .h
 // common logic, 24 bit address reads with one dummpy byte.
-SpiOpResult _spi0_flash_read_common(uint32_t offset, uint32_t *p, size_t sz, const uint8_t cmd) {
+SpiOpResult _spi0_flash_read_common(const uint32_t offset, uint32_t *p, const size_t sz, const uint8_t cmd) {
   if (sz > 64 || (sz % sizeof(uint32_t))) return SPI_RESULT_ERR;
   FlashAddr24 addr24bit;
 
@@ -29,7 +31,7 @@ SpiOpResult _spi0_flash_read_common(uint32_t offset, uint32_t *p, size_t sz, con
   addr24bit.u8[3] = 0u; // Read has dummy byte after address.
   p[0] = addr24bit.u32;
 
-#ifdef DEBUG_FLASH_QE
+#if DEBUG_FLASH_QE
   // Is there any reason to do this other than it looks pretty when debugging?
   // SPI0Command will clear to the bit length, sz * 8.
   size_t sz_dw = sz / sizeof(uint32_t);
@@ -79,5 +81,7 @@ SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status16, bool non_vol
   // Winbond supports, some GD devices do not.
   return spi0_flash_write_status_register_1(status16, non_volatile, 16u);
 }
+
+};  // namespace experimental {
 
 };

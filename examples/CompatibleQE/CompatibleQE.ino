@@ -10,11 +10,16 @@
   Status Register-1.
 */
 #include <ESP8266WiFi.h>
+#if ((1 - DEBUG_FLASH_QE - 1) == 2)
+#undef DEBUG_FLASH_QE
+#define DEBUG_FLASH_QE 0
+#endif
+
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
 #define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
 
 // These control informative messages from the library SpiFlashUtils
-#if defined(DEBUG_FLASH_QE)
+#if DEBUG_FLASH_QE
 #define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
 #else
 #define DBG_SFU_PRINTF(...) do {} while (false)

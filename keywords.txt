@@ -36,6 +36,7 @@ Enable_QMode	KEYWORD2
 SPI_read_status	KEYWORD2
 SPI_write_status	KEYWORD2
 Wait_SPI_Idle	KEYWORD2
+__spi_flash_vendor_cases	KEYWORD2
 _spi0_flash_read_common	KEYWORD2
 alt_spi_flash_get_id	KEYWORD2
 clear_sr1_mask	KEYWORD2
@@ -47,6 +48,7 @@ is_WEL	KEYWORD2
 is_WEL_dbg	KEYWORD2
 is_WIP	KEYWORD2
 is_spi0_quad	KEYWORD2
+reclaim_GPIO_9_10	KEYWORD2
 spi0_flash_chip_erase	KEYWORD2
 spi0_flash_read_secure_register	KEYWORD2
 spi0_flash_read_sfdp	KEYWORD2
@@ -70,6 +72,7 @@ spi0_flash_write_status_registers_2B	KEYWORD2
 spi0_flash_write_volatile_enable	KEYWORD2
 spi_flash_enable_qmode	KEYWORD2
 spi_flash_issi_enable_QIO_mode	KEYWORD2
+spi_flash_vendor_cases	KEYWORD2
 spi_set_addr	KEYWORD2
 user_spi_flash_dio_to_qio_pre_init	KEYWORD2
 verify_status_register_1	KEYWORD2
@@ -80,11 +83,18 @@ verify_status_register_2	KEYWORD2
 #######################################
 
 BOOTROM_NONOS_H	LITERAL1
+BUILTIN_SUPPORT_GIGADEVICE	LITERAL1
+BUILTIN_SUPPORT_MYSTERY_VENDOR_D8	LITERAL1
+BUILTIN_SUPPORT_SPI_FLASH_VENDOR_EON	LITERAL1
+BUILTIN_SUPPORT_SPI_FLASH__S6_QE_WPDIS	LITERAL1
 DBG_SFU_PRINTF	LITERAL1
+DEBUG_FLASH_QE	LITERAL1
 GD25Q32C_STATUS1=0	LITERAL1
 GD25Q32C_STATUS2=1	LITERAL1
 GD25Q32C_STATUS3=2	LITERAL1
+MODE_DIO_RECLAIM_GPIOS_H	LITERAL1
 PRESERVE_EXISTING_STATUS_BITS	LITERAL1
+RECLAIM_GPIO_EARLY	LITERAL1
 SPIFLASHUTILS_H	LITERAL1
 SPI_FLASH_VENDOR_MYSTERY_D8	LITERAL1
 kChipEraseCmd	LITERAL1

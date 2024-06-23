@@ -51,7 +51,7 @@ struct FlashList {
 {SPI_FLASH_VENDOR_UNKNOWN,      /* 0xFF */    "unknown"}
 };
 
-void printFlashChipID(Print& sio) {
+void printFlashChipID() {
  // These lookups matchup to vendors commonly thought to exist on ESP8266 Modules.
  // Unfortunatlly the information returned from spi_flash_get_id() does not
  // indicate a unique vendor. There can only be 128 vendors per bank. And, there
@@ -62,7 +62,7 @@ void printFlashChipID(Print& sio) {
  for (size_t i = 0; SPI_FLASH_VENDOR_UNKNOWN != flashList[i].id; i++) {
    if (flashList[i].id == (deviceId & 0xFFu)) {
      vendor = flashList[i].vendor;
-     sio.printf("  %-12s 0x%06x, '%s'\r\n", "Device ID:", deviceId, vendor);
+     Serial.printf("  %-12s 0x%06x, '%s'\r\n", "Device ID:", deviceId, vendor);
    }
  }
 }

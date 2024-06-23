@@ -3,8 +3,8 @@
 
   To free up the GPIO pins, the SPI Flash device needs to support turning off
   pin functions /WP and /HOLD. This is often controlled through the Quad Enable
-  (QE) bit. Depending on the vendor, it is either at S9 or S6 of the Status
-  Register. Additionally, SRP0 and SRP1 may beed setting to 0.
+  (QE) bit. Depending on the vendor, it is either at S9 or S6 of the Flash
+  Status Register. Additionally, SRP0 and SRP1 may need setting to 0.
 
   Non-volatile Status Register values are loaded at powerup. When the volatile
   values are set and no power cycling, they stay set across ESP8266 reboots
@@ -67,92 +67,73 @@ XMC - SFDP Revision matches up with XM25QH32B datasheet.
     MFG/Device is not enough to differentiate. Need to use SFDP.
 
 0xD8 (Obfuscated MFG ID?, GigaDevice ID in SFDP)
- 1. Only supports 8-bit Status Register writes
- 2. The BootROM's 16-bit register-1 writes will fail. This works in our
+ 1. Part marking 25Q32ET no logo
+ 2. Only supports 8-bit Status Register writes
+ 3. The BootROM's 16-bit register-1 writes will fail. This works in our
     favor, no extra wear on the Flash.
- 3. The last 64 bits of the 128-bit Unique ID are still in the erased state.
- 4. Flash Software Reset, opcodes 66h-99h, clears non-volatile QE bit!!!
- 5. Looks a lot like GigaDevice GD25Q32E
+ 4. The last 64 bits of the 128-bit Unique ID are still in the erased state.
+ 5. Flash Software Reset, opcodes 66h-99h, clears non-volatile QE bit!!!
+ 6. Looks a lot like the GigaDevice GD25Q32E.
 
 GigaDevice
  1. No legacy 16-bit, only 8-bit write status register commands are supported.
+ 2. GD25B32E doesn't appear to have a /WP or /HOLD pin while GD25Q32C does!
+    I have not seen a module with the GD25B32C part; I downloaded the wrong
+    datasheet. From the datasheet: "The default value of QE bit is 1 and it
+    cannot be changed, so that the IO2 and IO3 pins are enabled all the time."
+    If the pins float for non-quad operations, it might work. If so, no special
+    code is needed use pinMode to reclaim GPIO pin.
+ 3. Vendor confusing there is GigaDevice and ELM Technology with similar part
+    numbers and same MFG ID. It looks like ELM Technology has GigaDevice NOR
+    Flash in there product offering with PDF files rebadged as ELM.
 
 Winbond
  1. My new NodeMCU v1.0 board only works with 16-bit write status register-1.
-    Appears to be built with very old inventory.
+    It appears, very old inventory is still out there.
 
 EON
  1. EN25Q32C found on an AI Thinker ESP-12F module marked as DIO near antenna.
  2. Only has 1 Status Register. The BootROM's 16-bit register-1 writes fail.
  3. NC, No /HOLD pin function.
  4. Status Register has WPDis, Bit6, to disable the /WP pin function.
+
+
 //
 ////////////////////////////////////////////////////////////////////////////////
 */
 
-// #define DEBUG_FLASH_QE 1 // set in *.ino.globals.h instead
-#if 0
-// Needed when module is a .cpp
 #include <Arduino.h>
+#include <ModeDIO_ReclaimGPIOs.h>
+
+#define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
+#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
 
 // These control informative messages from the library SpiFlashUtils.h
-#ifdef DEBUG_FLASH_QE
-#define DBG_SFU_PRINTF ets_uart_printf
+// As a sub .ino module of a main Sketch these might already be defined.
+// Make flexable enough to handle compile as either .ino or .cpp
+#if RECLAIM_GPIO_EARLY && DEBUG_FLASH_QE
+// Use lower level print functions when printing before "C++" runtime has initialized.
+#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
+#elif DEBUG_FLASH_QE
+#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
 #else
 #define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
-#endif
 #include <SpiFlashUtils.h>
 
-//D #include <BootROM_NONOS.h>
-//D #include <kStatusRegisterBitDef.h>
-//D #include <FlashChipId_D8.h>
 #ifndef ETS_PRINTF
 #define ETS_PRINTF ets_uart_printf
 #endif
 
-#ifndef SUPPORT_MYSTERY_VENDOR_D8
-#define SUPPORT_MYSTERY_VENDOR_D8 1
+#if defined(BUILTIN_SUPPORT_MYSTERY_VENDOR_D8) && !defined(SPI_FLASH_VENDOR_MYSTERY_D8)
+#include "FlashChipId_D8.h"
 #endif
-
-
 ////////////////////////////////////////////////////////////////////////////////
-// Handle Freeing up GPIO pins 9 and 10 for various Flash memory chips.
 //
-// returns:
-// true  - on success
-// false - on failure
-//
-bool reclaim_GPIO_9_10() {
+bool __spi_flash_vendor_cases(uint32_t _id) {
+  using namespace experimental;
+
   bool success = false;
-
-#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
-  pinMode(1, SPECIAL);
-  uart_buff_switch(0);
-#endif
-  DBG_SFU_PRINTF("\n\n\nRun reclaim_GPIO_9_10()\n");
-
-  //+ uint32_t _id = spi_flash_get_id();
-  uint32_t _id = alt_spi_flash_get_id(); // works when SDK has not initialized
-  DBG_SFU_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
-
-  if (is_WEL()) {
-    // Most likely left over from BootROM's attempt to update the Flash Status Register.
-    // Common event for SPI Flash that don't support 16-bit Write Status Register-1.
-    // Seen with EON's EN25Q32C, GigaDevice and Mystery Vendor 0xD8. These
-    // do not support 16-bit write status register-1.
-    DBG_SFU_PRINTF("  Detected: a previous write failed. The WEL bit is still set.\n");
-    spi0_flash_write_disable();
-  }
-
-  // Expand to read SFDP Parameter Version. Use result to differentiate parts.
-
-  // SPI0 must be in DIO or DOUT mode to continue.
-  if (is_spi0_quad()) {
-    DBG_SFU_PRINTF("  GPIO pins 9 and 10 are not available when configured for SPI Flash Modes: \"QIO\" or \"QOUT\"\n");
-    return false;
-  }
-
   /*
     A false ID is possible! Be aware of possible collisions. The vendor id is an
     odd parity value. There are a possible 128 manufactures. As of this writing,
@@ -163,34 +144,29 @@ bool reclaim_GPIO_9_10() {
   uint32_t vendor = 0xFFu & _id;
   switch (vendor) {
 
+#if BUILTIN_SUPPORT_GIGADEVICE
     case SPI_FLASH_VENDOR_GIGADEVICE:
-      // I don't have matching hardware.  My read of the GigaDevice datasheet
-      // says it should work.
+    // I don't have matching hardware.  My read of the GigaDevice datasheet
+    // says it should work.
 
-      // Only supports 8-bit status register writes.
-      success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+    // Only supports 8-bit status register writes.
+    success = set_QE_bit__8_bit_sr2_write(volatile_bit);
 
-      // For this part, non-volatile could be used w/o concern of write fatgue.
-      // Once non-volatile set, no attempts by the BootROM or SDK to change will
-      // work. 16-bit Status Register-1 writes will always fail.
-      // volatile_bit is safe and faster write time.
-      break;
+    // For this part, non-volatile could be used w/o concern of write fatgue.
+    // Once non-volatile set, no attempts by the BootROM or SDK to change will
+    // work. 16-bit Status Register-1 writes will always fail.
+    // volatile_bit is safe and faster write time.
+    break;
+#endif
 
-#if SUPPORT_MYSTERY_VENDOR_D8
+#if BUILTIN_SUPPORT_MYSTERY_VENDOR_D8
     // Indicators are this is an obfuscated GigaDevice part.
     case SPI_FLASH_VENDOR_MYSTERY_D8: // 0xD8, Mystery Vendor
-      //D Always zero SR
-      //D // NONOS SDK does not handle MYSTERY_D8. Clear Status Register protection
-      //D // bits as spi_flash_check_wr_protect would have. This updates the
-      //D // non-volatile copy. If alread clear, no changes made.
-      //D clear_sr1_mask(0x7Cu);  // Clear BP4, BP3, BP2, BP1, and BP0
-      //D clear_sr2_mask(0x40u);  // Clear CMP
-
       success = set_QE_bit__8_bit_sr2_write(volatile_bit);
       break;
 #endif
 
-#if SUPPORT_SPI_FLASH_VENDOR_XMC
+#if BUILTIN_SUPPORT_SPI_FLASH_VENDOR_XMC
     // Special handling for XMC anomaly where driver strength value is lost.
     case SPI_FLASH_VENDOR_XMC: // 0x20
       {
@@ -210,18 +186,16 @@ bool reclaim_GPIO_9_10() {
       break;
 #endif
 
-#if SUPPORT_SPI_FLASH__S6_QE_WPDIS
+#if BUILTIN_SUPPORT_SPI_FLASH__S6_QE_WPDIS
     // These use bit6 as a QE bit or WPDis
     case SPI_FLASH_VENDOR_PMC:        // 0x9D aka ISSI - Does not support volatile
     case SPI_FLASH_VENDOR_MACRONIX:   // 0xC2
       success = set_S6_QE_WPDis_bit(non_volatile_bit);
       break;
+#endif
 
+#if BUILTIN_SUPPORT_SPI_FLASH_VENDOR_EON
     case SPI_FLASH_VENDOR_EON:        // 0x1C
-      //D // NONOS SDK does not handle EON as it does ISSI and Macronix S6 bit.
-      //D // clear Status Register protection bits, preserves WPDis
-      //D clear_sr1_mask(0x3Cu);
-
       // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
       // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendors,
       // ISSI and Macronix.
@@ -260,6 +234,50 @@ bool reclaim_GPIO_9_10() {
       }
       break;
   }
+  return success;
+}
+
+bool spi_flash_vendor_cases(uint32_t _id) __attribute__ ((weak, alias("__spi_flash_vendor_cases")));
+
+////////////////////////////////////////////////////////////////////////////////
+// Handle Freeing up GPIO pins 9 and 10 for various Flash memory chips.
+//
+// returns:
+// true  - on success
+// false - on failure
+//
+bool reclaim_GPIO_9_10() {
+  using namespace experimental;
+  bool success = false;
+
+#if RECLAIM_GPIO_EARLY && DEBUG_FLASH_QE
+  pinMode(1, SPECIAL);
+  uart_buff_switch(0);
+#endif
+  DBG_SFU_PRINTF("\n\n\nRun reclaim_GPIO_9_10()\n");
+
+  //+ uint32_t _id = spi_flash_get_id();
+  uint32_t _id = alt_spi_flash_get_id(); // works when SDK has not initialized
+  DBG_SFU_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
+
+  if (is_WEL()) {
+    // Most likely left over from BootROM's attempt to update the Flash Status Register.
+    // Common event for SPI Flash that don't support 16-bit Write Status Register-1.
+    // Seen with EON's EN25Q32C, GigaDevice and Mystery Vendor 0xD8. These
+    // do not support 16-bit write status register-1.
+    DBG_SFU_PRINTF("  Detected: a previous write failed. The WEL bit is still set.\n");
+    spi0_flash_write_disable();
+  }
+
+  // Expand to read SFDP Parameter Version. Use result to differentiate parts.
+
+  // SPI0 must be in DIO or DOUT mode to continue.
+  if (is_spi0_quad()) {
+    DBG_SFU_PRINTF("  GPIO pins 9 and 10 are not available when configured for SPI Flash Modes: \"QIO\" or \"QOUT\"\n");
+    return false;
+  }
+
+  success = spi_flash_vendor_cases(_id);
   spi0_flash_write_disable();
   DBG_SFU_PRINTF("%sSPI0 signals '/WP' and '/HOLD' were%s disabled.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
   // Set GPIOs to Arduino defaults
@@ -267,7 +285,7 @@ bool reclaim_GPIO_9_10() {
     pinMode(9, INPUT);
     pinMode(10, INPUT);
   }
-#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
+#if RECLAIM_GPIO_EARLY && DEBUG_FLASH_QE
   pinMode(1, INPUT);      // restore back to default
 #endif
   return success;

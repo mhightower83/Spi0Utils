@@ -34,10 +34,12 @@
 // #include <mmu_iram.h>
 #include <umm_malloc/umm_malloc.h>
 #include <esp8266_undocumented.h>
-#include <BootROM_NONOS.h>
-#include <SpiFlashUtils.h>
-#include <kStatusRegisterBitDef.h>
-#include <FlashChipId_D8.h>
+// #include <BootROM_NONOS.h>
+// #include <SpiFlashUtils.h>
+// #include <FlashChipId_D8.h>
+#include <ModeDIO_ReclaimGPIOs.h>
+
+
 extern "C" void mmu_set_pll(void);
 
 #define ETS_PRINTF ets_uart_printf

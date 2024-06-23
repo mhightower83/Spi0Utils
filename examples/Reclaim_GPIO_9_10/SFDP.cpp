@@ -12,12 +12,21 @@
 
 */
 #include <Arduino.h>
-extern "C" {
-// #define DEBUG_FLASH_QE 1
+#if ((1 - RECLAIM_GPIO_EARLY - 1) == 2)
+#undef RECLAIM_GPIO_EARLY
+#define RECLAIM_GPIO_EARLY 0
+#endif
+#if ((1 - DEBUG_FLASH_QE - 1) == 2)
+#undef DEBUG_FLASH_QE
+#define DEBUG_FLASH_QE 0
+#endif
+
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
 #define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
 
-#if defined(RECLAIM_GPIO_EARLY)
+extern "C" {
+
+#if RECLAIM_GPIO_EARLY
 // Allows for calling printSfdpReport() from preinit
 // Calling context must have already called:
 //    pinMode(1, SPECIAL);
@@ -30,10 +39,10 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 // Debug MACROS
 // These control informative messages from the library SpiFlashUtils
-#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
+#if RECLAIM_GPIO_EARLY && DEBUG_FLASH_QE
 // Printing before "C++" runtime has initialized. Use lower level print functions.
 #define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
-#elif defined(DEBUG_FLASH_QE)
+#elif DEBUG_FLASH_QE
 #define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
 #else
 #define DBG_SFU_PRINTF(...) do {} while (false)
@@ -41,6 +50,8 @@ extern "C" {
 #include "SFDP.h" // has #include <SpiFlashUtils.h>
 
 #define NOINLINE __attribute__((noinline))
+
+using namespace experimental;
 
 void printSfdpReport() {
 // #if 1
