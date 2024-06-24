@@ -13,7 +13,8 @@
 #include <ModeDIO_ReclaimGPIOs.h>
 
 #if RECLAIM_GPIO_EARLY
-extern bool gpio_9_10_available;
+// Variable is used before C++ runtime init has started.
+bool gpio_9_10_available __attribute__((section(".noinit")));
 #else
 bool gpio_9_10_available = false;
 #endif
@@ -22,7 +23,7 @@ void setup() {
 
   Serial.begin(115200);
   delay(200);
-  Serial.printf("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
+  Serial.println("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
 #if ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
   if (gpio_9_10_available) {
@@ -39,8 +40,6 @@ void loop() {
 }
 
 #if RECLAIM_GPIO_EARLY
-bool gpio_9_10_available __attribute__((section(".noinit")));
-
 void preinit() {
   /*
     If using `-DDEBUG_FLASH_QE=1`, printing will be at 115200 bps

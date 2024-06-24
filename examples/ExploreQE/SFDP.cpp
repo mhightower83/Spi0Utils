@@ -14,11 +14,11 @@
 #include <Arduino.h>
 #if ((1 - RECLAIM_GPIO_EARLY - 1) == 2)
 #undef RECLAIM_GPIO_EARLY
-#define RECLAIM_GPIO_EARLY 0
+#define RECLAIM_GPIO_EARLY 1
 #endif
 #if ((1 - DEBUG_FLASH_QE - 1) == 2)
 #undef DEBUG_FLASH_QE
-#define DEBUG_FLASH_QE 0
+#define DEBUG_FLASH_QE 1
 #endif
 
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)

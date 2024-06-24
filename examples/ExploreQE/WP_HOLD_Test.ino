@@ -99,7 +99,8 @@ bool test_clear_SR1(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool
 // verifies that the bit is set returns true if set.
 //
 // was_preset == true, check current QE bit and
-// returns true when QE is already set
+// returns true when QE is already set. Intended for using the current
+// Status Register settings.
 //
 bool test_set_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset) {
   using namespace experimental;

@@ -89,7 +89,7 @@ void setup() {
     "Demo: Use with Flash Mode DIO, reclaim GPIO pins 9 and 10.");
   printFlashChipID();
 
-#if ! RECLAIM_GPIO_EARLY
+#if 0 // ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
 #endif
   // enableWiFiAtBootTime();
@@ -204,7 +204,7 @@ bool gpio_9_10_available __attribute__((section(".noinit")));
 void preinit(void) {
   SHARE_PREINIT__DEBUG_ESP_BACKTRACELOG();
 
-#if RECLAIM_GPIO_EARLY
+#if 0 //RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
   if (gpio_9_10_available) {
     // On success, GPIO pins 9 and 10 defaults to INPUTs.

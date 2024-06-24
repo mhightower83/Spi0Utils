@@ -1,34 +1,39 @@
 # Directory Listing for Example
 
-## [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline)
-
-An outline example of using Reclaim GPIOs
-
-Shows reclaiming GPIOs from preinit() or setup()
-
-
-## [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom)
-
-Similar to "Outline" above. Illustrates adding support for an additional Flash part. Provides a hypothetical custom handler for EN25QH128A by supplying replacement function: `spi_flash_vendor_cases()`
+For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules, NodeMCU DEV boards, and other modules that expose those pins.
 
 
 ## [CompatibleQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/CompatibleQE)
 
-For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
-
-Assumes the Flash has compatible QE support
-
-For ESP8266EX with QE-compatible Flash memory, this example should work.
-Others will require more effort. However, this starts us off with a simple example.
-
+For ESP8266EX modules with QE-compatible Flash memory, this example should work.
 Compatible Flash memory would be like BergMicro, Winbond, XMC, or others that have the QE bit at S9 in the Flash Status Register and support 16-bit Write Status Register-1.
 
+Other flash memory may require more effort. However, this starts us off with a simple example to introduce the things to looking for.
 
-## [Reclaim_GPIO_9_10](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Reclaim_GPIO_9_10)
+TODO: I am not sure this example is needed? It is at a lower level. Maybe the Outline example is enough?
 
-For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules and NodeMCU dev boards.
 
-This is a more comprehensive example. It should handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC, GD25QxxE, EON EN25Q32C
+## [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline)
+
+An outline example demonstrating the using `reclaim_GPIO_9_10()` which can handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC, GD25QxxE, EON EN25Q32C
+
+Shows reclaiming GPIOs from `preinit()` or `setup()`.
+
+The hope is this will handle a large percentage of the modules exposing GPIO9 and 10.
+
+
+## [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom)
+
+Similar to "Outline" above. Illustrates adding support for an additional Flash part. Provides a hypothetical custom handler for EN25QH128A by supplying replacement function `spi_flash_vendor_cases()`.
+
+
+
+## [ExploreQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/ExploreQE)
+
+This is a more detailed example intended for poking around.
+It has a menu of options for analyzing and testing various SPI Flash memory.
+
+I think this example needs more work? It still feels a bit complicated to drive.
 
 
 ## [SFDPHexDump](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/SFDPHexDump)
@@ -51,14 +56,17 @@ Reference:
   Free Download - requires registration
 ```
 
+
 ## [Streaker](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Streaker)
+
+This probably doesn't belong here; however, It need a home for archiving purposes.
 
 Uses a kludged together non-OS wrapper for running some code with the bare necessities.
 This is not a true Arduino Sketch. It is closer to a low-level ESP8266 program running with some code fragments from the BootROM, NONOS SDK, and Arduino ESP8266.
-Use build option MMU:"16K Cache + 48K IRAM"
+Use build option `MMU:"16K Cache + 48K IRAM"`
 
 This unorthodox Sketch generates low jitter signals for viewing on an oscilloscope.
 Specifically for viewing ringing, rise, and fall times of GPIO pins.
-This probably doesn't belong here; however, It need a home for archiving purposes.
+
 
 ## [d-a-v's EPS8266 pinout (Updated)](https://mhightower83.github.io/esp8266/pinout.html)

@@ -17,7 +17,8 @@
 
 
 #if RECLAIM_GPIO_EARLY
-extern bool gpio_9_10_available;
+// Variable is used before C++ runtime init has started.
+bool gpio_9_10_available __attribute__((section(".noinit")));
 #else
 bool gpio_9_10_available = false;
 #endif
@@ -26,7 +27,7 @@ void setup() {
 
   Serial.begin(115200);
   delay(200);
-  Serial.printf("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
+  Serial.println("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
 #if ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
   if (gpio_9_10_available) {
@@ -43,8 +44,6 @@ void loop() {
 }
 
 #if RECLAIM_GPIO_EARLY
-bool gpio_9_10_available __attribute__((section(".noinit")));
-
 void preinit() {
   /*
     If using `-DDEBUG_FLASH_QE=1`, printing will be at 115200 bps
@@ -81,8 +80,7 @@ bool spi_flash_vendor_cases(uint32_t _id) {
   switch (vendor) {
     case SPI_FLASH_VENDOR_EON: // 0x1C
       // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
-      // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendors,
-      // ISSI and Macronix.
+      // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendor parts.
 
       // Match on Device/MFG ignoreing bit capcacity
       if (0x701Cu == (_id & 0x0FFFFu)) {

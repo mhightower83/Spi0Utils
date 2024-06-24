@@ -197,8 +197,7 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
 #if BUILTIN_SUPPORT_SPI_FLASH_VENDOR_EON
     case SPI_FLASH_VENDOR_EON:        // 0x1C
       // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
-      // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendors,
-      // ISSI and Macronix.
+      // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendor parts.
       // 0x331Cu - Not supported EN25Q32 no S6 bit.
       // 0x701Cu - EN25QH128A might work
       //

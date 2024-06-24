@@ -90,22 +90,22 @@ bool test_sr_8_bit_write(uint32_t reg_0idx) {
   using namespace experimental;
 
   // No change write
-  // Note flash_gd25q32c_read_status has a bug where it needlessly enables WEL
-  // This is not an issue for us because it is followed by a
-  // flash_gd25q32c_write_status call.
+  // Note NONOS_SDK function `flash_gd25q32c_read_status` has a bug where it
+  // needlessly enables WEL This is not an issue for us because it is followed
+  // by a flash_gd25q32c_write_status call.
   uint32_t status = flash_gd25q32c_read_status(reg_0idx);
   flash_gd25q32c_write_status(reg_0idx, status); // 8-bit status register write
   bool success = true;
   if (is_WEL()) {
-    ETS_PRINTF("* WEL left set after %u-bit Status Register-%u write.\n", 8u, reg_0idx + 1);
+    ETS_PRINTF("* WEL left set after %u-bit Status Register-%u write.\n", 8u, reg_0idx + 1u);
     success = false;
   } else {
-    ETS_PRINTF("  Pass - %u-bit Write Status Register-%u.\n", 8u, reg_0idx + 1);
+    ETS_PRINTF("  Pass - %u-bit Write Status Register-%u.\n", 8u, reg_0idx + 1u);
   }
 
   uint32_t new_status = flash_gd25q32c_read_status(reg_0idx);
   if (new_status != status) {
-    ETS_PRINTF("* Status Register changed!!! after %u-bit Status Register-%u write.\n", 8u, reg_0idx + 1);
+    ETS_PRINTF("* Status Register changed!!! after %u-bit Status Register-%u write.\n", 8u, reg_0idx + 1u);
     success = false;
   }
   return success;
@@ -115,7 +115,7 @@ bool test_sr1_16_bit_write() {
   using namespace experimental;
 
   uint32_t status  = flash_gd25q32c_read_status(/* SR1 */ 0);
-  status |= flash_gd25q32c_read_status(/* SR2 */ 1) << 8;
+  status |= flash_gd25q32c_read_status(/* SR2 */ 1u) << 8u;
   spi_flash_write_status(status); // 16-bit status register write
   bool success = true;
   if (is_WEL()) {
@@ -126,14 +126,13 @@ bool test_sr1_16_bit_write() {
   }
 
   uint32_t new_status  = flash_gd25q32c_read_status(/* SR1 */ 0);
-  new_status |= flash_gd25q32c_read_status(/* SR2 */ 1) << 8;
+  new_status |= flash_gd25q32c_read_status(/* SR2 */ 1u) << 8u;
   if (new_status != status) {
-    ETS_PRINTF("* Status Register changed!!! after %u-bit Status Register-%u write.\n", 16u, 1);
+    ETS_PRINTF("* Status Register changed!!! after %u-bit Status Register-%u write.\n", 16u, 1u);
     success = false;
   }
   return success;
 }
-
 
 
 /*
@@ -146,7 +145,7 @@ bool test_sr1_16_bit_write() {
   * if SR2 does not exist and SR1 does exist then QE bit is S6
   * flash that use S15 for QE bit are not paired with the ESP8266.
     * These parts require a unique read and write instruction 3Fh/3Eh for SR2.
-    * I don't see any support for these in esptool.py
+    * I don't find any support for these in esptool.py
 */
 bool analyzeSR_QE() {
   using namespace experimental;
@@ -221,10 +220,10 @@ void analyzeSR_QEVolatile() {
       if (use_16_bit) {
         uint32_t sr1 = 0;
         spi0_flash_read_status_register_1(&sr1);
-        sr1 |= sr2 << 8;
-        spi0_flash_write_status_register(/* SR1 */ 0, sr1, volatile_bit, 16);
+        sr1 |= sr2 << 8u;
+        spi0_flash_write_status_register(/* SR1 */ 0, sr1, volatile_bit, 16u);
       } else {
-        spi0_flash_write_status_register(/* SR2 */ 1, sr2, volatile_bit, 8);
+        spi0_flash_write_status_register(/* SR2 */ 1u, sr2, volatile_bit, 8u);
       }
 
       uint32_t new_sr2 = 0;
@@ -243,7 +242,7 @@ void analyzeSR_QEVolatile() {
       Serial.PRINTF_LN("  S6 bit already set cannot test for volatile Status Register write support.");
     } else {
       sr1 |= BIT6;
-      spi0_flash_write_status_register(/* SR1 */ 0, sr1, volatile_bit, 8);
+      spi0_flash_write_status_register(/* SR1 */ 0, sr1, volatile_bit, 8u);
 
       uint32_t new_sr1 = 0;
       spi0_flash_read_status_register_1(&new_sr1);
@@ -296,8 +295,14 @@ void cmdLoop(const int key) {
       Serial.PRINTF_LN("%c 9 - Modal: S9/QE Status Register", (9u == modal_qe_bit) ? '>' : ' ');
       break;
     case '5':
-      qe_was_preset = (qe_was_preset) ? false : true;
-      Serial.PRINTF_LN("%c 5 - Modal: Use values as set for tests", (qe_was_preset) ? '>' : ' ');
+      qe_was_preset = ! qe_was_preset;
+      Serial.PRINTF_LN("%c 5 - Modal: Use the defined modal values", (qe_was_preset) ? ' ' : '>');
+      if (qe_was_preset) {
+      Serial.PRINTF_LN("      The current Status Register values will be used for options: 'h', 'w', 'v'");
+      Serial.PRINTF_LN("      Use options 'Q', 'q', 'E', or 'e' to change the Status Register QE bit.");
+      } else {
+      Serial.PRINTF_LN("      Modal settings will be used for options: 'h', 'w', 'v'");
+      }
       break;
 
     case 'a':
@@ -378,7 +383,7 @@ void cmdLoop(const int key) {
 
     case 'r':
       if (qe_was_preset || gpio_9_10_available) {
-        Serial.PRINTF_LN("reclaim_GPIO_9_10() has already been called. Reboot to run again.");
+        Serial.PRINTF_LN("reclaim_GPIO_9_10() has already been successfully called. Reboot to run again.");
       } else {
         Serial.PRINTF_LN("Test call to reclaim_GPIO_9_10()");
         gpio_9_10_available = reclaim_GPIO_9_10();
@@ -434,7 +439,13 @@ void cmdLoop(const int key) {
       Serial.PRINTF_LN("%c 7 - Modal: 16-bits Write Status Register", (write_status_register_16_bit) ? '>' : ' ');
       Serial.PRINTF_LN("%c 6 - Modal: S6/QE Status Register", (6u == modal_qe_bit) ? '>' : ' ');
       Serial.PRINTF_LN("%c 9 - Modal: S9/QE Status Register", (9u == modal_qe_bit) ? '>' : ' ');
-      Serial.PRINTF_LN("%c 5 - Modal: Use values as set for test preset values", (qe_was_preset) ? '>' : ' ');
+      Serial.PRINTF_LN("%c 5 - Modal: Use modal values defined above", (qe_was_preset) ? ' ' : '>');
+      if (qe_was_preset) {
+      Serial.PRINTF_LN("      The current Status Register values will be used for options: 'h', 'w', 'v'");
+      Serial.PRINTF_LN("      Use options 'Q', 'q', 'E', or 'e' to change the Status Register QE bit.");
+      } else {
+      Serial.PRINTF_LN("      Modal settings will be used for options: 'h', 'w', 'v'");
+      }
       Serial.PRINTF_LN();
       Serial.PRINTF_LN("  Q - Set SR, non-volatile WEL 06h, then set QE/S%u=1", modal_qe_bit);
       Serial.PRINTF_LN("  q - Set SR, non-volatile WEL 06h, then set QE/S%u=0", modal_qe_bit);
@@ -451,23 +462,7 @@ void cmdLoop(const int key) {
       Serial.PRINTF_LN("  R - Restart");
       Serial.PRINTF_LN("  ? - This help message");
       break;
-/*
-  Test /WP
-    * digitalWrite(10, LOW);
-  Test /HOLD
-    * digitalWrite(9, LOW);
 
-  Mode:  8-bit Write SR
-  Mode: 16-bit Write SR
-  Mode: QE/S6
-  Mode  QE/S9
-
-  Set QE/S9
-  Clear QE/S9
-
-  Set QE/S6
-  Clear QE/S6
-*/
     default:
       break;
   }

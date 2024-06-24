@@ -52,6 +52,7 @@ reclaim_GPIO_9_10	KEYWORD2
 spi0_flash_chip_erase	KEYWORD2
 spi0_flash_read_secure_register	KEYWORD2
 spi0_flash_read_sfdp	KEYWORD2
+spi0_flash_read_status_register	KEYWORD2
 spi0_flash_read_status_register_1	KEYWORD2
 spi0_flash_read_status_register_2	KEYWORD2
 spi0_flash_read_status_register_3	KEYWORD2
