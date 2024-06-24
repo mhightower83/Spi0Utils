@@ -60,3 +60,5 @@ Use build option MMU:"16K Cache + 48K IRAM"
 This unorthodox Sketch generates low jitter signals for viewing on an oscilloscope.
 Specifically for viewing ringing, rise, and fall times of GPIO pins.
 This probably doesn't belong here; however, It need a home for archiving purposes.
+
+## [d-a-v's EPS8266 pinout (Updated)](https://mhightower83.github.io/esp8266/pinout.html)

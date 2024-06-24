@@ -29,9 +29,11 @@ void setup() {
   Serial.printf("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
 #if ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
-  /*
-    Add additional GPIO pin initialization here
-  */
+  if (gpio_9_10_available) {
+    /*
+      Add additional GPIO pin initialization here
+    */
+  }
 #endif
 
 }
@@ -59,6 +61,14 @@ void preinit() {
 ////////////////////////////////////////////////////////////////////////////////
 // Expand Flash Vendor support for GPIO9 and GPIO10 reclaim
 // Adds support for EN25QH128A
+#if RECLAIM_GPIO_EARLY || DEBUG_FLASH_QE
+// Use lower level print functions when printing before "C++" runtime has initialized.
+#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
+#elif DEBUG_FLASH_QE
+#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
+#else
+#define DBG_SFU_PRINTF(...) do {} while (false)
+#endif
 #include <SpiFlashUtils.h>
 
 extern "C"
@@ -68,29 +78,29 @@ bool spi_flash_vendor_cases(uint32_t _id) {
   bool success = false;
   uint32_t vendor = 0xFFu & _id;
 
-  if (SPI_FLASH_VENDOR_EON == vendor) { // 0x1C
-    // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
-    // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendors,
-    // ISSI and Macronix.
+  switch (vendor) {
+    case SPI_FLASH_VENDOR_EON: // 0x1C
+      // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
+      // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendors,
+      // ISSI and Macronix.
 
-    // Match on Device/MFG ignoreing bit capcacity
-    if (0x701Cu == (_id & 0x0FFFFu)) {
-      // EN25QH128A hypothetical example - never tested
-      success = set_S6_QE_WPDis_bit(volatile_bit);
-    } else
-    if (0x301Cu == (_id & 0x0FFFFu)) {
-      // EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
-      // tested with EN25Q32C
-      success = set_S6_QE_WPDis_bit(volatile_bit);
-      // Could refine to EN25Q32C only by using the presents of SFDP support.
-    } else {
+      // Match on Device/MFG ignoreing bit capcacity
+      if (0x701Cu == (_id & 0x0FFFFu)) {
+        // EN25QH128A hypothetical example - never tested
+        success = set_S6_QE_WPDis_bit(volatile_bit);
+      } else
+      if (0x301Cu == (_id & 0x0FFFFu)) {
+        // EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
+        // tested with EN25Q32C
+        success = set_S6_QE_WPDis_bit(volatile_bit);
+        // Could refine to EN25Q32C only by using the presents of SFDP support.
+      }
       // let all other EON parts fail.
-      return false;
-    }
-  }
+      break;
 
-  if (! success) {
-    success = __spi_flash_vendor_cases(_id);
+    default:
+      success = __spi_flash_vendor_cases(_id);
+      break;
   }
   return success;
 }

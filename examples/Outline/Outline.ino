@@ -25,9 +25,11 @@ void setup() {
   Serial.printf("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
 #if ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
-  /*
-    Add additional GPIO pin initialization here
-  */
+  if (gpio_9_10_available) {
+    /*
+      Add additional GPIO pin initialization here
+    */
+  }
 #endif
 
 }

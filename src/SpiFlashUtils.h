@@ -96,7 +96,7 @@ SpiOpResult spi0_flash_write_disable() {
 inline
 SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
   *pStatus = 0;
-  return SPI0Command(kReadStatusRegister1Cmd, pStatus, 0, 8);
+  return SPI0Command(kReadStatusRegister1Cmd, pStatus, 0, 8u);
 }
 #else
 inline
@@ -108,31 +108,49 @@ SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
 #endif
 
 inline
-SpiOpResult spi0_flash_read_status_register_2(uint32_t *pStatus) {
+SpiOpResult spi0_flash_read_status_register(const size_t idx0, uint32_t *pStatus) {
   *pStatus = 0;
-  return SPI0Command(kReadStatusRegister2Cmd, pStatus, 0, 8);
+  uint8_t cmd;
+  if (0u == idx0) {
+    cmd = kReadStatusRegister1Cmd;
+  } else if (1u == idx0) {
+    cmd = kReadStatusRegister2Cmd;
+  } else if (2u == idx0) {
+    cmd = kReadStatusRegister3Cmd;
+  } else {
+    // panic();
+    return SPI_RESULT_ERR;
+  }
+  return SPI0Command(cmd, pStatus, 0, 8u);
+}
+
+inline
+SpiOpResult spi0_flash_read_status_register_2(uint32_t *pStatus) {
+  return spi0_flash_read_status_register(1, pStatus);
 }
 inline
 SpiOpResult spi0_flash_read_status_register_3(uint32_t *pStatus) {
-  *pStatus = 0;
-  return SPI0Command(kReadStatusRegister3Cmd, pStatus, 0, 8);
+  return spi0_flash_read_status_register(2, pStatus);
 }
 
 inline
 SpiOpResult spi0_flash_write_status_register(const uint32_t idx0, uint32_t status, const bool non_volatile, const uint32_t numbits = 8) {
+  uint8_t cmd = 0;
+  if (0u == idx0) {
+    cmd = kWriteStatusRegister1Cmd;
+  } else if (1u == idx0) {
+    cmd = kWriteStatusRegister2Cmd;
+  } else if (2u == idx0) {
+    cmd = kWriteStatusRegister3Cmd;
+  } else {
+    // panic();
+    return SPI_RESULT_ERR;
+  }
+
   uint32_t prefix = kWriteEnableCmd;
   if (! non_volatile) {
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
-  }
-
-  uint8_t cmd = 0;
-  if (0 == idx0) {
-    cmd = kWriteStatusRegister1Cmd;
-  } else if (1 == idx0) {
-    cmd = kWriteStatusRegister2Cmd;
-  } else if (2 == idx0) {
-    cmd = kWriteStatusRegister3Cmd;
   }
 
   SpiOpResult ok0 = SPI0Command(cmd, &status, numbits, 0, prefix);
@@ -163,7 +181,7 @@ SpiOpResult spi0_flash_write_status_register_2(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister2Cmd, &status, 8, 0, prefix);
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister2Cmd, &status, 8u, 0, prefix);
   spi0_flash_write_disable();
   return ok0;
 }
@@ -175,7 +193,7 @@ SpiOpResult spi0_flash_write_status_register_3(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister3Cmd, &status, 8, 0, prefix);
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister3Cmd, &status, 8u, 0, prefix);
   spi0_flash_write_disable();
   return ok0;
 }
@@ -453,9 +471,17 @@ static bool set_QE_bit__16_bit_sr1_write(const bool non_volatile) {
   return is_QE();
 }
 
+#if 0
+// I don't think these are needed anymore
 [[maybe_unused]]
 static void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
+  #if 0
+  // BUGBUG sets WEL
   uint32_t status = flash_gd25q32c_read_status(reg_0idx);
+  #else
+  uint32_t status = 0;
+  spi0_flash_read_status_register(reg_0idx, &status);
+  #endif
   if (pattern & status) {
     status &= ~pattern;
     flash_gd25q32c_write_status(reg_0idx, status); // 8-bit status register write
@@ -463,16 +489,16 @@ static void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
     DBG_SFU_PRINTF("** One time clear of Status Register-%u bits 0x%02X.\n", reg_0idx + 1, pattern);
   }
 }
-
 inline
 void clear_sr1_mask(const uint32_t pattern) {
   clear_sr_mask(0, pattern);
 }
-
 inline
 void clear_sr2_mask(const uint32_t pattern) {
   clear_sr_mask(1, pattern);
 }
+#endif
+
 
 };  // namespace experimental {
 

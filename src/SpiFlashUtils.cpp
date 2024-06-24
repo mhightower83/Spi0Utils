@@ -40,7 +40,7 @@ SpiOpResult _spi0_flash_read_common(const uint32_t offset, uint32_t *p, const si
   // SPI0Command sends a read opcode, like SFDP Read (5Ah) with 32 bits of data
   // containing the 24 bit address followed by a dummy byte of zeros. The
   // responce is copied back into pData starting at pData[0].
-  return SPI0Command(cmd, p, 32, sz * 8);
+  return SPI0Command(cmd, p, 32u, sz * 8u);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +52,7 @@ SpiOpResult spi0_flash_read_status_registers_2B(uint32_t *pStatus) {
     uint32_t statusR2 = 0;
     ok0 = spi0_flash_read_status_register_2(&statusR2);
     // SPI0Command clears unused bits in 32-bit word.
-    if (SPI_RESULT_OK == ok0) *pStatus |= (statusR2 << 8);
+    if (SPI_RESULT_OK == ok0) *pStatus |= (statusR2 << 8u);
   }
   return ok0;
 }
@@ -62,7 +62,7 @@ SpiOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus) {
   if (SPI_RESULT_OK == ok0) {
     uint32_t statusR3 = 0;
     ok0 = spi0_flash_read_status_register_3(&statusR3);
-    if (SPI_RESULT_OK == ok0) *pStatus |= (statusR3 << 16);
+    if (SPI_RESULT_OK == ok0) *pStatus |= (statusR3 << 16u);
   }
   return ok0;
 }
