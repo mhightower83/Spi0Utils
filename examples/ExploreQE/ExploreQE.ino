@@ -58,19 +58,19 @@ Maybe a Flash write after the LEDs update
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
 #define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
 
-//D ////////////////////////////////////////////////////////////////////////////////
-//D // Debug MACROS
-//D // These control informative messages from the library SpiFlashUtils
-//D // Also, used in utility_reclaim_gpio_9_10.ino
-//D #if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
-//D // Use lower level print functions when printing before "C++" runtime has initialized.
-//D #define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
-//D #elif defined(DEBUG_FLASH_QE)
-//D #define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
-//D #else
-//D #define DBG_SFU_PRINTF(...) do {} while (false)
-//D #endif
-#include <SpiFlashUtils.h>
+////////////////////////////////////////////////////////////////////////////////
+// Debug MACROS
+// These control informative messages from the library SpiFlashUtilsQE
+// Also, used in utility_reclaim_gpio_9_10.ino
+#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
+// Use lower level print functions when printing before "C++" runtime has initialized.
+#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
+#elif defined(DEBUG_FLASH_QE)
+#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
+#else
+#define DBG_SFU_PRINTF(...) do {} while (false)
+#endif
+#include <SpiFlashUtilsQE.h>
 
 
 #define NOINLINE __attribute__((noinline))

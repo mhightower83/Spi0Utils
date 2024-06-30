@@ -68,7 +68,7 @@ void preinit() {
 #else
 #define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
-#include <SpiFlashUtils.h>
+#include <SpiFlashUtilsQE.h>
 
 extern "C"
 bool spi_flash_vendor_cases(uint32_t _id) {
@@ -85,12 +85,12 @@ bool spi_flash_vendor_cases(uint32_t _id) {
       // Match on Device/MFG ignoreing bit capcacity
       if (0x701Cu == (_id & 0x0FFFFu)) {
         // EN25QH128A hypothetical example - never tested
-        success = set_S6_QE_WPDis_bit(volatile_bit);
+        success = set_S6_QE_bit_WPDis(volatile_bit);
       } else
       if (0x301Cu == (_id & 0x0FFFFu)) {
         // EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
         // tested with EN25Q32C
-        success = set_S6_QE_WPDis_bit(volatile_bit);
+        success = set_S6_QE_bit_WPDis(volatile_bit);
         // Could refine to EN25Q32C only by using the presents of SFDP support.
       }
       // let all other EON parts fail.

@@ -74,8 +74,6 @@ SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status16, bool non_vol
     // Let them try. If it fails, it will be discovered on verify.
     // All updates should/must be verified.
     // return SPI_RESULT_ERR;
-  } else {
-    DBG_SFU_PRINTF("  2 Byte Status Write enabled\n");
   }
 
   // Winbond supports, some GD devices do not.

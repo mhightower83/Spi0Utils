@@ -90,7 +90,7 @@ void setup() {
     return;
   }
 
-  bool success = set_QE_bit__16_bit_sr1_write(volatile_bit);
+  bool success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
   Serial.PRINTF_LN("  %s - Set Quad Enable bit with 16-bit Status Register-1 Write", (success) ? "Success" : "Failed");
   if (! success) Serial.PRINTF_LN("  Unexpected results, Check Flash Chip compatibility");
 
@@ -108,7 +108,7 @@ void testGpio9Gpio10() {
     For this test you want to connect two pull down resistors to pins 9 and 10
     and observe the result when this test is run. If the Sketch crashes and
     reboots  GPIO9 and GPIO10 have not been properly freed.
-    `set_QE_bit__16_bit_sr1_write()` in `setup()` may not be correct for your
+    `set_S9_QE_bit__16_bit_sr1_write()` in `setup()` may not be correct for your
     Flash memory or you forgot to compile with SPI Mode: DIO.
   */
   pinMode(9, INPUT);

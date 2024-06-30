@@ -3,6 +3,13 @@
 For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules, NodeMCU DEV boards, and other modules that expose those pins.
 
 
+## [Analyze](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Analyze)
+
+Evaluate the Flash memory for required attributes.
+Report if the current code supports the device as is.
+Suggest cut-able code to use in a `spi_flash_vendor_cases()` function.
+
+
 ## [CompatibleQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/CompatibleQE)
 
 For ESP8266EX modules with QE-compatible Flash memory, this example should work.
@@ -25,7 +32,6 @@ The hope is this will handle a large percentage of the modules exposing GPIO9 an
 ## [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom)
 
 Similar to "Outline" above. Illustrates adding support for an additional Flash part. Provides a hypothetical custom handler for EN25QH128A by supplying replacement function `spi_flash_vendor_cases()`.
-
 
 
 ## [ExploreQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/ExploreQE)

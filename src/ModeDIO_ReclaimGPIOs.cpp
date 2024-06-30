@@ -119,7 +119,7 @@ EON
 #else
 #define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
-#include <SpiFlashUtils.h>
+#include <SpiFlashUtilsQE.h>
 
 #ifndef ETS_PRINTF
 #define ETS_PRINTF ets_uart_printf
@@ -150,7 +150,7 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
     // says it should work.
 
     // Only supports 8-bit status register writes.
-    success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+    success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
 
     // For this part, non-volatile could be used w/o concern of write fatgue.
     // Once non-volatile set, no attempts by the BootROM or SDK to change will
@@ -162,7 +162,7 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
 #if BUILTIN_SUPPORT_MYSTERY_VENDOR_D8
     // Indicators are this is an obfuscated GigaDevice part.
     case SPI_FLASH_VENDOR_MYSTERY_D8: // 0xD8, Mystery Vendor
-      success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+      success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
       break;
 #endif
 
@@ -173,7 +173,7 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
         // Backup Status Register-3
         uint32_t status3 = 0;
         SpiOpResult ok0 = spi0_flash_read_status_register_3(&status3);
-        success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+        success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
         if (SPI_RESULT_OK == ok0) {
           // Copy Driver Strength value from non-volatile to volatile
           ok0 = spi0_flash_write_status_register_3(status3, volatile_bit);
@@ -190,7 +190,7 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
     // These use bit6 as a QE bit or WPDis
     case SPI_FLASH_VENDOR_PMC:        // 0x9D aka ISSI - Does not support volatile
     case SPI_FLASH_VENDOR_MACRONIX:   // 0xC2
-      success = set_S6_QE_WPDis_bit(non_volatile_bit);
+      success = set_S6_QE_bit_WPDis(non_volatile_bit);
       break;
 #endif
 
@@ -205,7 +205,7 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
       if (0x301Cu == (_id & 0x0FFFFu)) {
         // EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
         // tested with EN25Q32C
-        success = set_S6_QE_WPDis_bit(volatile_bit);
+        success = set_S6_QE_bit_WPDis(volatile_bit);
         // Could refine to EN25Q32C only by using the presents of SFDP support.
       }
       // let all others fail.
@@ -221,12 +221,12 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
       // used to descibe the 16-bit status register-1 writes in newer SPI
       // Flash datasheets. I expect this to work with modules that are
       // compatibile with SPI Flash Mode: "QIO" or "QOUT".
-      success = set_QE_bit__16_bit_sr1_write(volatile_bit);
+      success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
       if (! success) {
         // Fallback for DIO only modules - some will work / some will not. If
         // not working, you will need to study the datasheet for the flash on
         // your module and write a module specific handler.
-        success = set_QE_bit__8_bit_sr2_write(volatile_bit);
+        success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
         if (! success) {
           DBG_SFU_PRINTF("** Unable to set volatile QE bit using default handler.\n");
         }
@@ -279,6 +279,8 @@ bool reclaim_GPIO_9_10() {
   success = spi_flash_vendor_cases(_id);
   spi0_flash_write_disable();
   DBG_SFU_PRINTF("%sSPI0 signals '/WP' and '/HOLD' were%s disabled.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
+  DBG_SFU_PRINTF("%sGPIO9 and GPIO10 are%s available.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
+
   // Set GPIOs to Arduino defaults
   if (success) {
     pinMode(9, INPUT);
