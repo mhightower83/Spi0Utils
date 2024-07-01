@@ -1,8 +1,8 @@
 /*
   SPI0 Flash Utilities
 */
-#ifndef SPIFLASHUTILS_H
-#define SPIFLASHUTILS_H
+#ifndef EXPERIMENTAL_SPIFLASHUTILS_H
+#define EXPERIMENTAL_SPIFLASHUTILS_H
 
 #if ((1 - DEBUG_FLASH_QE - 1) == 2)
 #undef DEBUG_FLASH_QE
@@ -285,4 +285,4 @@ uint32_t alt_spi_flash_get_id(void) {
 }
 #endif
 
-#endif // SPIFLASHUTIL_H
+#endif // EXPERIMENTAL_SPIFLASHUTILS_H

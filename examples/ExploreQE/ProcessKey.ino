@@ -264,7 +264,7 @@ void printAllSRs() {
   SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
   if (SPI_RESULT_OK == ok0) {
     Serial.PRINTF_LN("  spi0_flash_read_status_registers_3B(0x%06X)", status);
-    if (kQEBit2B == (status & kQEBit2B)) Serial.PRINTF_LN("    QE=1");
+    if (kQES9Bit2B == (status & kQES9Bit2B)) Serial.PRINTF_LN("    QE=1");
     if (kWELBit  == (status & kWELBit))  Serial.PRINTF_LN("    WEL=1");
   } else {
     Serial.PRINTF_LN("  spi0_flash_read_status_registers_3B() failed!");

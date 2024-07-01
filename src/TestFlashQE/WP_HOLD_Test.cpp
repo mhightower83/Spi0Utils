@@ -44,8 +44,7 @@ bool test_set_SRP1_SRP0_clear_QE(const uint32_t qe_bit, const bool use_16_bit_sr
   if (9u == qe_bit) {
     digitalWrite(10, HIGH);     // ensure /WP is not asserted
     pinMode(10, OUTPUT);
-    uint32_t sr1 = 0;
-    uint32_t sr2 = 0;
+    uint32_t sr1 = 0, sr2 = 0;
     spi0_flash_read_status_register_1(&sr1);
     // spi0_flash_read_status_register_2(&sr2);
     if (BIT7 == (BIT7 & sr1)) {
@@ -68,6 +67,23 @@ bool test_set_SRP1_SRP0_clear_QE(const uint32_t qe_bit, const bool use_16_bit_sr
     ok = BIT7 == (BIT7 & sr1);
     digitalWrite(10, SPECIAL);
   }
+  // else
+  // if (6u == qe_bit) {
+  //   digitalWrite(10, HIGH);     // ensure /WP is not asserted
+  //   pinMode(10, OUTPUT);
+  //   uint32_t sr1 = 0;
+  //   if (use_16_bit_sr1) {
+  //     spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 16);
+  //   } else {
+  //     spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 8);
+  //     // I haven't seen a QE/S6 device that has SR2
+  //   }
+  //   // Verify
+  //   sr1 = 0;
+  //   spi0_flash_read_status_register_1(&sr1);
+  //   ok = 0 == (0xFCu & sr1);
+  //   digitalWrite(10, SPECIAL);
+  // }
   return ok;
 }
 
@@ -87,8 +103,7 @@ bool test_clear_SRP1_SRP0_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, c
   if (9u == qe_bit) {
     digitalWrite(10, HIGH);
     pinMode(10, OUTPUT);      // was /WP
-    uint32_t sr1 = 0;
-    uint32_t sr2 = 0;
+    uint32_t sr1 = 0, sr2 = 0;
     //D spi0_flash_read_status_register_2(&sr2);
     //D sr2 &= BIT1; // Keep QE bit clear all others.
     if (use_16_bit_sr1) {
@@ -102,6 +117,22 @@ bool test_clear_SRP1_SRP0_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, c
     // Verify
     spi0_flash_read_status_register_1(&sr1);
     ok = 0u == (sr1 & 0xFCu);
+    digitalWrite(10, SPECIAL);
+  } else
+  if (6u == qe_bit || 0xFFu == qe_bit) {
+    digitalWrite(10, HIGH);     // ensure /WP is not asserted
+    pinMode(10, OUTPUT);
+    uint32_t sr1 = 0;
+    if (use_16_bit_sr1) {
+      spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 16);
+    } else {
+      spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 8);
+      // I haven't seen a QE/S6 device that has SR2
+    }
+    // Verify
+    sr1 = 0;
+    spi0_flash_read_status_register_1(&sr1);
+    ok = 0 == (0xFCu & sr1);
     digitalWrite(10, SPECIAL);
   }
   return ok;
@@ -134,7 +165,7 @@ uint32_t test_set_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const boo
       spi0_flash_read_status_register_1(&sr1);
       qe = BIT6 == (BIT6 & sr1);
     }
-    Serial.PRINTF_LN("  QE/S%u=%u used", qe_bit, (qe) ? 1u : 0u);
+    Serial.PRINTF_LN("  QE/S%x=%u used", qe_bit, (qe) ? 1u : 0u);
     return qe;
   }
 
@@ -231,8 +262,29 @@ bool testFlashWrite(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool
     test = BIT2 == (BIT2 & verify_sr1);
     sr1 &= ~BIT2;
     spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 8);
+  } else
+  if (0xFFu == qe_bit) {
+    // No QE, SRP0 or SRP1
+    uint32_t sr1 = 0, sr2 = 0;
+    spi0_flash_read_status_register_1(&sr1);
+    sr1 |= BIT2;  // set PM0
+    if (use_16_bit_sr1) {
+      spi0_flash_read_status_register_2(&sr2);
+      sr1 |= sr2 << 8u;
+      spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 16);
+    } else {
+      spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 8);
+    }
+    uint32_t verify_sr1 = 0;
+    spi0_flash_read_status_register_1(&verify_sr1);
+    test = BIT2 == (BIT2 & verify_sr1);
+    sr1 &= ~BIT2;   // clear PM0
+    if (use_16_bit_sr1) {
+      spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 16);
+    } else {
+      spi0_flash_write_status_register(/* SR1 */ 0, sr1, non_volatile, 8);
+    }
   }
-
   return test;
 }
 
@@ -267,46 +319,43 @@ struct OutputTestResult {
 };
 #endif
 
-OutputTestResult testOutputGPIO10(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool use_preset) {
+bool testOutputGPIO10(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool use_preset) {
   using namespace experimental;
-  OutputTestResult otr;
-  otr.qe_bit = 0xFFu;
+  bool pass = false;
 
   VERBOSE_PRINTF_LN("\nRunning verification test for pin function /WP disable");
-  if (9u != qe_bit && 6u != qe_bit) {
+  if (9u != qe_bit && 6u != qe_bit && 0xFFu != qe_bit) {
     VERBOSE_PRINTF_LN("* QE/S%u bit field specification undefined should be either S6 or S9", qe_bit);
-    return otr;
+    return pass;
   }
   digitalWrite(10, HIGH);     // ensure /WP is not asserted, otherwise test_set_QE may fail
   pinMode(10, OUTPUT);
 
   uint32_t _QE = test_set_QE(qe_bit, use_16_bit_sr1, non_volatile, use_preset);
   int srp10_WP = get_SRP10(qe_bit); // already masked with 3
-  otr.qe_bit = qe_bit;
-  otr.qe = _QE;
-  otr.srp0 = srp10_WP & 1u;
-  otr.srp1 = srp10_WP >> 1u;;
 
-  // uint32_t expected_count = 0;
   if (9u == qe_bit) {
-    VERBOSE_PRINTF_LN("  Test Write: QE/S%u=%u SRP1:SRP0=%u:%u, GPIO10 as OUTPUT", qe_bit, _QE, (srp10_WP >> 1u) & 1u, srp10_WP & 1u);
+    VERBOSE_PRINTF_LN("  Test Write: QE/S%x=%u SRP1:SRP0=%u:%u, GPIO10 as OUTPUT",
+      qe_bit, _QE, (srp10_WP >> 1u) & 1u, srp10_WP & 1u);
+  } else
+  if (6u == qe_bit) {
+    VERBOSE_PRINTF_LN("  Test Write: QE/S%x=%u GPIO10 as OUTPUT", qe_bit, _QE);
   } else {
-    VERBOSE_PRINTF_LN("  Test Write: QE/S%u=%u GPIO10 as OUTPUT", qe_bit, _QE);
+    VERBOSE_PRINTF_LN("  Test Write: No QE bit GPIO10 as OUTPUT");
   }
+  VERBOSE_PRINTF_LN("  Test Write: using %svolatile Status Register", (non_volatile) ? "non-" : "");
 
-  // Expect success regardless of QE
-  bool pass = testFlashWrite(qe_bit, use_16_bit_sr1, non_volatile);
+  // With pin 10, HIGH, expect success regardless of QE and SRP1 and SRP0
+  pass = testFlashWrite(qe_bit, use_16_bit_sr1, non_volatile);
   VERBOSE_PRINTF_LN("  Test Write: With /WP set %s write %s", "HIGH", (pass) ? "succeeded" : "failed.");
-  otr.high = (pass) ? 1u : 0;
 
-  // Expect success if QE=1, failure otherwise
+  // Expect success if QE=1 and/or SRP1:0=0:0 are relavent, failure otherwise
   digitalWrite(10, LOW);
   pass = testFlashWrite(qe_bit, use_16_bit_sr1, non_volatile);
   VERBOSE_PRINTF_LN("  Test Write: With /WP set %s write %s", "LOW", (pass) ? "succeeded" : "failed.");
-  otr.low = (pass) ? 1u : 0;
 
   pinMode(10, SPECIAL);
-  return otr;
+  return pass;
 }
 
 //
@@ -317,17 +366,17 @@ bool testOutputGPIO9(const uint32_t qe_bit, const bool use_16_bit_sr1, const boo
   bool pass = false;
 
   Serial.PRINTF_LN("\nRunning verification test for pin function /HOLD disable");
-  if (9u != qe_bit && 6u != qe_bit) {
-    Serial.PRINTF_LN("* QE/S%u bit field specification undefined should be either S6 or S9", qe_bit);
+  if (9u != qe_bit && 6u != qe_bit && 0xFFu != qe_bit) {
+    Serial.PRINTF_LN("* QE/S%x bit field specification undefined should be either S6 or S9", qe_bit);
     return pass;
   }
 
-  uint32_t _QE = test_set_QE(qe_bit, use_16_bit_sr1, non_volatile, use_preset);
-  Serial.PRINTF_LN("  Verify /HOLD is disabled by Status Register QE/S%u=%u", qe_bit, _QE);
+  uint32_t _qe = test_set_QE(qe_bit, use_16_bit_sr1, non_volatile, use_preset);
+  Serial.PRINTF_LN("  Verify /HOLD is disabled by Status Register QE/S%u=%u", qe_bit, _qe);
   Serial.PRINTF_LN("  If changing GPIO9 to OUTPUT and setting LOW crashes, it failed.");
   pinMode(9u, OUTPUT);
   digitalWrite(9u, LOW);
-  if (_QE) {
+  if (_qe) {
     Serial.PRINTF_LN("  passed - QE/S%u bit setting worked.", qe_bit); // No WDT Reset - then it passed.
     pass = true;
   } else {
@@ -350,15 +399,15 @@ bool testInput_GPIO9_GPIO10(const uint32_t qe_bit, const bool use_16_bit_sr1, co
     Serial.PRINTF_LN("* QE/S%u bit field specification undefined should be either S6 or S9", qe_bit);
     return false;
   }
-  uint32_t _QE = test_set_QE(qe_bit, use_16_bit_sr1, non_volatile, use_preset);
-  Serial.PRINTF_LN("  Test: QE/S%u=%u, GPIO pins 9 and 10 as INPUT", qe_bit, _QE);
+  uint32_t _qe = test_set_QE(qe_bit, use_16_bit_sr1, non_volatile, use_preset);
+  Serial.PRINTF_LN("  Test: QE/S%u=%u, GPIO pins 9 and 10 as INPUT", qe_bit, _qe);
   pinMode(9, INPUT);
   pinMode(10, INPUT);
   uint32_t pin9 = digitalRead(9);
   Serial.PRINTF_LN("  digitalRead result: GPIO_9(%u) and GPIO_10(%u)", pin9, digitalRead(10));
 
   if (0 == pin9){
-    if (_QE) {
+    if (_qe) {
       Serial.PRINTF_LN("  Passed - no crash"); // No WDT Reset - then it passed.
       return true;
     } else {

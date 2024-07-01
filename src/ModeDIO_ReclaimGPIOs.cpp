@@ -125,51 +125,103 @@ EON
 #define ETS_PRINTF ets_uart_printf
 #endif
 
-#if defined(BUILTIN_SUPPORT_MYSTERY_VENDOR_D8) && !defined(SPI_FLASH_VENDOR_MYSTERY_D8)
+#if !defined(SPI_FLASH_VENDOR_MYSTERY_D8)
 #include "FlashChipId_D8.h"
 #endif
-////////////////////////////////////////////////////////////////////////////////
-//
-bool __spi_flash_vendor_cases(uint32_t _id) {
+
+/*//////////////////////////////////////////////////////////////////////////////
+  To have a larger pool of Flash vendors to test against, I tested with devices
+  that did not expose GPIO9 and GPIO10. These did not work well. Let us hope
+  that modules makers that expose GPIO9 and GPIO10 made an effort to pair the
+  ESP8266EX with a SPI Flash that can disable /WP and /HOLD.
+*/
+bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_ver) {
   using namespace experimental;
 
   bool success = false;
   /*
-    A false ID is possible! Be aware of possible collisions. The vendor id is an
-    odd parity value. There are a possible 128 manufactures. As of this writing,
-    there are 11 banks of 128 manufactures. Our extracted vendor value is one of
-    11 possible vendors. We do not have an exact match. I have not seen any way
-    to ID the bank.
+  0xCCTTVV = _id = alt_spi_flash_get_id();
+  | | |
+  | | +--- Vendor   - manufacturer ID
+  | +----- Type     - memory type - seems to add some uniqueness
+  +------- Capacity - 2**CC, often correlates to byte capacity TODO: check math -1?
+
+  A false ID is possible! Be aware of possible collisions. The vendor id is an
+  odd parity value. There are a possible 128 manufactures. As of this writing,
+  there are 11 banks of 128 manufactures. Our extracted vendor value is one of
+  11 possible vendors. We do not have an exact match. I have not seen any way
+  to ID the bank.
   */
   uint32_t vendor = 0xFFu & _id;
+  uint32_t type = (_id >> 8u) & 0xFFu;
+
   switch (vendor) {
+    case SPI_FLASH_VENDOR_BERGMICRO:
+      // Status: hardware tested
+      // Logo XTX BN25F08
+      // SFDP none
 
-#if BUILTIN_SUPPORT_GIGADEVICE
-    case SPI_FLASH_VENDOR_GIGADEVICE:
-    // I don't have matching hardware.  My read of the GigaDevice datasheet
-    // says it should work.
-
-    // Only supports 8-bit status register writes.
-    success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
-
-    // For this part, non-volatile could be used w/o concern of write fatgue.
-    // Once non-volatile set, no attempts by the BootROM or SDK to change will
-    // work. 16-bit Status Register-1 writes will always fail.
-    // volatile_bit is safe and faster write time.
-    break;
-#endif
-
-#if BUILTIN_SUPPORT_MYSTERY_VENDOR_D8
-    // Indicators are this is an obfuscated GigaDevice part.
-    case SPI_FLASH_VENDOR_MYSTERY_D8: // 0xD8, Mystery Vendor
-      success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
+      // I have a Sonoff SV with flash part BN25F08 with an XTX logo mark
+      // the JEDEC MFG ID matches BergMicro as does the part number.
+    case SPI_FLASH_VENDOR_WINBOND_NEX:
+      // Winbond 25Q32FVSIG
+      // SFDP Revision: 1.00, 1ST Parameter Table Revision: 1.00
+      // SFDP Table Ptr: 0x80, Size: 36 Bytes
+      if (0x40u == type) {
+        // 16-bit status register writes is what the ESP8266 BootROM is
+        // expecting the flash to support. "Legacy method" is what I often see
+        // used to descibe the 16-bit status register-1 writes in newer SPI
+        // Flash datasheets. I expect this to work with modules that are
+        // compatibile with SPI Flash Mode: "QIO" or "QOUT".
+        success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
+      }
       break;
-#endif
 
-#if BUILTIN_SUPPORT_SPI_FLASH_VENDOR_XMC
-    // Special handling for XMC anomaly where driver strength value is lost.
+    case SPI_FLASH_VENDOR_PUYA:
+      // Status: tested
+      // Puya P25Q80H
+      // SFDP Revision: 1.00, 1ST Parameter Table Revision: 1.00
+      // SFDP Table Ptr: 0x30, Size: 36 Bytes
+    case SPI_FLASH_VENDOR_ZBIT:
+      // Status: tested
+      // Zbit 25VQ80AT
+      // SFDP Revision: 1.06, 1ST Parameter Table Revision: 1.06
+      // SFDP Table Ptr: 0x30, Size: 64 Bytes
+      if (0x60u == type) {
+        success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
+      }
+      // I have two parts with Zbit vendor ID that are not compatible
+      // TODO - recheck datasheet for device values for 4MB part
+      break;
+
+    case SPI_FLASH_VENDOR_MYSTERY_D8: // 0xD8
+      // "Mystery Vendor" - an obfuscated GigaDevice part?
+      // The SFDP table says the MFG is 0xC8
+      //
+      // Status: tested, sealed in ESP-12F module
+      // "Mystery Vendor" 25Q32ET, No logo
+      // SFDP Revision: 1.06, 1ST Parameter Table Revision: 1.06
+      // SFDP Table Ptr: 0x30, Size: 64 Bytes
+    case SPI_FLASH_VENDOR_GIGADEVICE: // 0xC8
+      // Based on my read of the GigaDevice datasheet
+      // Only supports 8-bit status register writes just like "Mystery Vendor"
+      // Status: no hardware testing
+      if (0x40u == type) {
+        success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
+      }
+      // For this part, non-volatile could be used w/o concern of write fatgue.
+      // Once non-volatile set, no attempts by the BootROM or SDK to change will
+      // work. 16-bit Status Register-1 writes will always fail.
+      // volatile_bit is safe and faster write time.
+      break;
+
     case SPI_FLASH_VENDOR_XMC: // 0x20
-      {
+      // Special handling for XMC anomaly where driver strength value is lost
+      // when switching from non-volatile to volatile.
+      // Status: tested, sealed in ESP-12F module
+      // SFDP Revision: 1.00, 1ST Parameter Table Revision: 1.00
+      // SFDP Table Ptr: 0x30, Size: 36 Bytes
+      if (0x40u == type) {
         // Backup Status Register-3
         uint32_t status3 = 0;
         SpiOpResult ok0 = spi0_flash_read_status_register_3(&status3);
@@ -179,59 +231,44 @@ bool __spi_flash_vendor_cases(uint32_t _id) {
           ok0 = spi0_flash_write_status_register_3(status3, volatile_bit);
           DBG_SFU_PRINTF("  XMC Anomaly: Copy Driver Strength values to volatile status register.\n");
           if (SPI_RESULT_OK != ok0) {
-            DBG_SFU_PRINTF("** anomaly handling failed.\n");
+            DBG_SFU_PRINTF("* anomaly handling failed.\n");
           }
         }
       }
       break;
-#endif
 
-#if BUILTIN_SUPPORT_SPI_FLASH__S6_QE_WPDIS
-    // These use bit6 as a QE bit or WPDis
+#if 0
+    // Not tested, block for now
+    // This are the two QE/S6 Flash vendors the NONOS_SDK checks for.
     case SPI_FLASH_VENDOR_PMC:        // 0x9D aka ISSI - Does not support volatile
     case SPI_FLASH_VENDOR_MACRONIX:   // 0xC2
+      // Status: no hardware testing
       success = set_S6_QE_bit_WPDis(non_volatile_bit);
       break;
 #endif
 
-#if BUILTIN_SUPPORT_SPI_FLASH_VENDOR_EON
     case SPI_FLASH_VENDOR_EON:        // 0x1C
-      // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
-      // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendor parts.
-      // 0x331Cu - Not supported EN25Q32 no S6 bit.
-      // 0x701Cu - EN25QH128A might work
-      //
-      // Match on Device/MFG ignoreing bit capcacity
-      if (0x301Cu == (_id & 0x0FFFFu)) {
-        // EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
-        // tested with EN25Q32C
+      // Status: tested, sealed in ESP-12F module
+      // EON EN25Q32C, identification based on datasheet and data matchup
+      // SFDP Revision: 1.00, 1ST Parameter Table Revision: 1.00
+      // SFDP Table Ptr: 0x30, Size: 36 Bytes
+      if (0x30u == type) {
+        // These will match EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
+        // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
+        // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendor parts.
         success = set_S6_QE_bit_WPDis(volatile_bit);
-        // Could refine to EN25Q32C only by using the presents of SFDP support.
       }
-      // let all others fail.
+      // 0x331Cu - Not supported, EN25Q32 no S6 bit
+      // 0x701Cu - EN25QH128A might work
       break;
-#endif
 
     default:
-      // Assume QE bit at S9
-
-      // Primary choice:
-      // 16-bit status register writes is what the ESP8266 BootROM is
-      // expecting the flash to support. "Legacy method" is what I often see
-      // used to descibe the 16-bit status register-1 writes in newer SPI
-      // Flash datasheets. I expect this to work with modules that are
-      // compatibile with SPI Flash Mode: "QIO" or "QOUT".
-      success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
-      if (! success) {
-        // Fallback for DIO only modules - some will work / some will not. If
-        // not working, you will need to study the datasheet for the flash on
-        // your module and write a module specific handler.
-        success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
-        if (! success) {
-          DBG_SFU_PRINTF("** Unable to set volatile QE bit using default handler.\n");
-        }
-      }
+      success = false;
       break;
+  }
+
+  if (! success) {
+    DBG_SFU_PRINTF("* Unable to find a QE bit handler.\n");
   }
   return success;
 }
