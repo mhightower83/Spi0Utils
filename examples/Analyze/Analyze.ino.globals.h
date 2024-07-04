@@ -1,7 +1,7 @@
 /*@create-file:build.opt@
 
 // BUILD_OPTION_FLASH_SAFETY_OFF defaults to on. uncomment to disable
-// -DBUILD_OPTION_FLASH_SAFETY_OFF=1
+-DBUILD_OPTION_FLASH_SAFETY_OFF=1
 
 // These options default to 0 or undefined.
 

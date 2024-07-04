@@ -256,7 +256,7 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
         // These will match EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
         // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
         // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendor parts.
-        success = set_S6_QE_bit_WPDis(volatile_bit);
+        success = set_S6_QE_bit_WPDis(non_volatile_bit);
       }
       // 0x331Cu - Not supported, EN25Q32 no S6 bit
       // 0x701Cu - EN25QH128A might work

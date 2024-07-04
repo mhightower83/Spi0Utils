@@ -61,7 +61,7 @@ void printSfdpReport() {
       uint32_t signature:32;
       uint32_t rev_minor:8;
       uint32_t rev_major:8;
-      uint32_t num_param_hdrs:8;
+      uint32_t num_parm_hdrs:8;
       uint32_t access_protocol:8;
     };
     uint32_t u32[2];
@@ -123,10 +123,10 @@ void printSfdpReport() {
     ETS_PRINTF("  %-18s 0x%08X\n", "SFDP Signature", sfdp_hdr.signature);
     ETS_PRINTF("  %-18s %u.%u\n", "Revision", sfdp_hdr.rev_major, sfdp_hdr.rev_minor);
     ETS_PRINTF("  %-18s 0x%02X\n", "Access Protocol", sfdp_hdr.access_protocol);
-    ETS_PRINTF("  %-18s %d\n", "Num Param hdrs", sfdp_hdr.num_param_hdrs);
+    ETS_PRINTF("  %-18s %d\n", "Num Param hdrs", sfdp_hdr.num_parm_hdrs);
 
     // size_t addr = 0u;
-    for (size_t i = 0u; i < (sfdp_hdr.num_param_hdrs + 1u); i++) {
+    for (size_t i = 0u; i < (sfdp_hdr.num_parm_hdrs + 1u); i++) {
       addr += sz;
       sz = sizeof(sfdp_param);
       ok0 = spi0_flash_read_sfdp(addr, &sfdp_param.u32[0], sz);

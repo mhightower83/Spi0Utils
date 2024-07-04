@@ -23,10 +23,16 @@ The hope is this will handle a large percentage of the modules exposing GPIO9 an
 
 Similar to "Outline" above. Illustrates adding support for an additional Flash part. Provides a hypothetical custom handler in `CustomeVendor.ino` for `spi_flash_vendor_cases()`.
 
+## [OutlineXMC](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineXMC)
+
+Similar to "OutlineCustom" above. Illustrates the use of SFDP data for tailoring Flash initialization for each revision of the part. Provides a hypothetical custom handler in `CustomeXMC.ino` for `spi_flash_vendor_cases()`.
+
 ## [Blinky](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Blinky)
 
 A blinking LED example. An adaptation of the example [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline) using GPIO9 and GPIO10.
 You can also add the module `CustomVendor.ino` if needed.
+
+
 
 ## [SFDPHexDump](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/SFDPHexDump)
 

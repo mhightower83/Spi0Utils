@@ -1,16 +1,18 @@
-
-
+#if 0
+// // https://stackoverflow.com/questions/8487986/file-macro-shows-full-path
+// // This value is resolved at compile time.
+#define _FILENAME_ &(strrchr("/" __FILE__, '/')[1])
+#define CHECK_OK0(a) if ((a)) { Serial.PRINTF_LN("* ERR: %s:%s:%d: ok0=%u", _FILENAME_, __func__, __LINE__, a);  return false; }
+#else
+#define CHECK_OK0(a) (void)a
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
-// Modal states
-bool qe_was_preset = false;
-bool write_status_register_16_bit = true;
-uint32_t modal_qe_bit = 0xFFu;
-
-static void resetModalValues() {
-  qe_was_preset = false;
-  modal_qe_bit = 0xFFu;
-  write_status_register_16_bit = true;
+//
+static uint32_t get_qe_pos() {
+  if (fd_state.S9) return 9u;
+  if (fd_state.S6) return 6u;
+  return 0xFFu;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,12 +25,12 @@ void printSR321(const char *indent) {
   if (SPI_RESULT_OK == ok0) {
     Serial.PRINTF_LN("%sSR321 0x%06X", indent, status);
     if (kWELBit  == (status & kWELBit))  Serial.PRINTF_LN("%s  WEL=1", indent);
-    if (9u == modal_qe_bit) {
+    if (fd_state.S9) {
       if (kQES9Bit2B == (status & kQES9Bit2B)) Serial.PRINTF_LN("%s  QE/S9=1", indent);
       if (BIT7 == (BIT7 & status))  Serial.PRINTF_LN("%s  SRP0=1", indent);
       if (BIT8 == (BIT8 & status))  Serial.PRINTF_LN("%s  SRP1=1", indent);
     } else
-    if (6u == modal_qe_bit) {
+    if (fd_state.S6) {
       if (kQES6Bit == (kQES6Bit & status)) Serial.PRINTF_LN("%s  QE/S6=1", indent);
     }
   } else {
@@ -128,23 +130,29 @@ bool test_sr1_16_bit_write() {
 //
 bool clearSR21(bool _non_volatile) {
   using namespace experimental;
+  SpiOpResult ok0;
 
   if (fd_state.has_16bw_sr1) {
-    spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 16u);
+    ok0 = spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 16u);
+    CHECK_OK0(ok0);
   } else {
-    spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 8u);
+    ok0 = spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 8u);
+    CHECK_OK0(ok0);
     if (fd_state.has_8bw_sr2) {
-      spi0_flash_write_status_register(/* SR2 */ 1u, 0, _non_volatile, 8u);
+      ok0 = spi0_flash_write_status_register(/* SR2 */ 1u, 0, _non_volatile, 8u);
+      CHECK_OK0(ok0);
       // I don't know that I need this. I sleep better with it. The concern is
       // all the Flash chips have different bits doing different things some
       // block register writes. If write block bits are split across register 1
       // and 2 then there may be a specific order needed. And, there are too
       // many data sheets for me to read.
-      spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 8u);
+      ok0 = spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 8u);
+      CHECK_OK0(ok0);
     }
   }
   return true;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Generalized Flash Status Register modify bit n function
@@ -162,8 +170,9 @@ bool clearSR21(bool _non_volatile) {
 //  0 - value already up to date - nochange
 // -1 - change failed - Status register write failed.
 //
-int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile ) {
+int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile) {
   using namespace experimental;
+  SpiOpResult ok0;
 
   // BIT1 and BIT0 are WEL and WIP which cannot be directly changed.
   if (2 > bit_pos || 16 <= bit_pos) return false;
@@ -172,9 +181,11 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile )
 
   uint32_t sr2 = 0;
   uint32_t sr21 = 0;
-  spi0_flash_read_status_register_1(&sr21);
+  ok0 = spi0_flash_read_status_register_1(&sr21);
+  CHECK_OK0(ok0);
   if (fd_state.has_8bw_sr2 || fd_state.has_16bw_sr1) {
     spi0_flash_read_status_register_2(&sr2);
+    CHECK_OK0(ok0);
     sr21 |= sr2 << 8u;
   }
 
@@ -191,20 +202,25 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile )
   }
 
   if (fd_state.has_16bw_sr1) {
-    spi0_flash_write_status_register(/* SR1 */ 0, sr21, _non_volatile, 16u);
+    ok0 = spi0_flash_write_status_register(/* SR1 */ 0, sr21, _non_volatile, 16u);
+    CHECK_OK0(ok0);
   } else {
     if (8u > bit_pos) {
-      spi0_flash_write_status_register(/* SR1 */ 0, sr21 & 0xFFu, _non_volatile, 8u);
+      ok0 = spi0_flash_write_status_register(/* SR1 */ 0, sr21 & 0xFFu, _non_volatile, 8u);
+      CHECK_OK0(ok0);
     } else {
-      spi0_flash_write_status_register(/* SR2 */ 1u, sr21 >> 8u, _non_volatile, 8u);
+      ok0 = spi0_flash_write_status_register(/* SR2 */ 1u, sr21 >> 8u, _non_volatile, 8u);
+      CHECK_OK0(ok0);
     }
   }
 
   uint32_t verify_sr2 = 0;
   uint32_t verify_sr21 = 0;
-  spi0_flash_read_status_register_1(&verify_sr21);
+  ok0 = spi0_flash_read_status_register_1(&verify_sr21);
+  CHECK_OK0(ok0);
   if (fd_state.has_8bw_sr2 || fd_state.has_16bw_sr1) {
-    spi0_flash_read_status_register_2(&verify_sr2);
+    ok0 = spi0_flash_read_status_register_2(&verify_sr2);
+    CHECK_OK0(ok0);
     verify_sr21 |= verify_sr2 << 8u;
   }
 
@@ -220,14 +236,15 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile )
 bool analyze_write_QE(bool _non_volatile) {
   using namespace experimental;
   bool pass = false;
-  uint32_t qe_num = (fd_state.S9) ? 9u : (fd_state.S6) ? 6u : 0xFFu;
+  uint32_t qe_num = get_qe_pos();
+  const char *str_kind = (_non_volatile) ? "non-" : "";
 
-  if (!fd_state.S9 && !fd_state.S6) {
-    Serial.PRINTF_LN("\nanalyze_write_QE: Testing for QE/? - No QE bit selected, S9 or S6.");
+  if (0xFFu == qe_num) {
+    Serial.PRINTF_LN("\nanalyze_write_QE: Testing for QE/S? - No QE bit selected, S9 or S6.");
     return pass;
   }
 
-  Serial.PRINTF_LN("\nanalyze_write_QE: Testing for QE/%u Status Register write support", qe_num);
+  Serial.PRINTF_LN("\nanalyze_write_QE: Testing for QE/S%X Status Register write support", qe_num);
   // set and clear QE
   int res = modifyBitSR(qe_num, 1u, _non_volatile);
   if (0 <= res) {
@@ -236,14 +253,12 @@ bool analyze_write_QE(bool _non_volatile) {
     res = modifyBitSR(qe_num, 0, _non_volatile);
     if (1 == res) {
       pass = true;
-      Serial.PRINTF_LN("  supported");
+      Serial.PRINTF_LN("  %svolatile supported", str_kind);
     } else {
-      Serial.PRINTF_LN("* QE/S%u bit stuck on cannot clear in %svolatile Status Register.",
-        qe_num, (_non_volatile) ? "non-" : "");
+      Serial.PRINTF_LN("* QE/S%X bit stuck on cannot clear in %svolatile Status Register.", qe_num, str_kind);
     }
   } else {
-    Serial.PRINTF_LN("* Unable to modify QE/S%u bit in %svolatile Status Register.",
-      qe_num, (_non_volatile) ? "non-" : "");
+    Serial.PRINTF_LN("* Unable to modify QE/S%X bit in %svolatile Status Register.", qe_num, str_kind);
   }
   return pass;
 }
@@ -292,9 +307,9 @@ bool analyze_SR_QE(const uint32_t hint) {
   // Reset Flash Discovery states
   resetFlashDiscovery();
 
-  // Take control of GPIO9/"/WP" and force high so SR writes are not protected.
-  digitalWrite(9, HIGH);
-  pinMode(9, OUTPUT);
+  // Take control of GPIO10/"/WP" and force high so SR writes are not protected.
+  digitalWrite(10u, HIGH);
+  pinMode(10u, OUTPUT);
 
   // This should not be necessary; however, our analysis depends on WEL working
   // a certain way. This confirms the Flash works and our thinking.
@@ -341,7 +356,6 @@ bool analyze_SR_QE(const uint32_t hint) {
   clearSR21(non_volatile_bit);
   fd_state.write_QE = analyze_SR_BP0(non_volatile_bit);
 
-
   Serial.PRINTF_LN("\nanalyze_SR_QE: Flash Info Summary:");
   if (sr1_8 || sr2_8 || sr3_8) {
     Serial.PRINTF("  Support for 8-bit Status Registers writes:");
@@ -365,7 +379,7 @@ bool analyze_SR_QE(const uint32_t hint) {
   }
 
   if (6u == hint) {
-    Serial.PRINTF_LN("  Hint suggests Status Register-1 support QE/S6 (WPdis) BIT6");  //*
+    Serial.PRINTF_LN("  Using hint, suggests Status Register-1 support QE/S6 (WPdis) BIT6");  //*
     fd_state.S6 = true;
   } else
   if (sr1_16) {
@@ -385,11 +399,12 @@ bool analyze_SR_QE(const uint32_t hint) {
       fd_state.S6 = true; // assumed when SR2 is not present
     }
   }
+
   if (fd_state.write_QE) {
     Serial.PRINTF_LN("  %svolatile Status Register bits available", "non-");
-  }
-  if (fd_state.has_volatile) {
-    Serial.PRINTF_LN("  %svolatile Status Register bits available", "");
+    if (fd_state.has_volatile) {
+      Serial.PRINTF_LN("  %svolatile Status Register bits available", "");
+    }
   }
 
   sfdpInfo = get_sfdp_revision();
@@ -408,10 +423,11 @@ bool analyze_SR_QE(const uint32_t hint) {
   if (!fd_state.write_QE) {
     Serial.PRINTF(
       "* The proposed QE/S%x bit was not writable.\n"
-      "* We now assume no support for the QE bit.\n", (fd_state.S9) ? 9u : 6u);
+      "* We now assume no support for the QE bit.\n", get_qe_pos());
     fd_state.S6 = false;
     fd_state.S9 = false;
   }
+
 
 // TODO need more work on deciding if we have enough info to continue.
 //
@@ -433,8 +449,8 @@ bool check_QE_WP_SxFF() {
   bool _non_volatile = (fd_state.has_volatile) ? volatile_bit : non_volatile_bit;
 
   // Clear Status Register-1 aka SR1
-  test_clear_SRP1_SRP0_QE(0xFFu, write_status_register_16_bit, _non_volatile);
-  bool pass1 = testOutputGPIO10(0xFFu, write_status_register_16_bit, _non_volatile, true /* use asis QE=0 */);
+  test_clear_SRP1_SRP0_QE(0xFFu, fd_state.has_16bw_sr1, _non_volatile);
+  bool pass1 = testOutputGPIO10(0xFFu, fd_state.has_16bw_sr1, _non_volatile, true /* use asis QE=0 */);
 
   if (pass1) {
     /* success with QE/S6= 0 or 1 */
@@ -460,9 +476,9 @@ bool check_QE_WP_S6() {
 
   // Clear Status Register-1 aka SR1
   // spi0_flash_write_status_register(/* SR1 */ 0, /* value */ 0, _non_volatile, 8u);
-  test_clear_SRP1_SRP0_QE(6u, write_status_register_16_bit, _non_volatile);
-  bool pass1 = testOutputGPIO10(6u, write_status_register_16_bit, _non_volatile, true /* use asis QE=0 */);
-  bool pass2 = testOutputGPIO10(6u, write_status_register_16_bit, _non_volatile, false /* set QE=1 */);
+  test_clear_SRP1_SRP0_QE(6u, fd_state.has_16bw_sr1, _non_volatile);
+  bool pass1 = testOutputGPIO10(6u, fd_state.has_16bw_sr1, _non_volatile, true /* use asis QE=0 */);
+  bool pass2 = testOutputGPIO10(6u, fd_state.has_16bw_sr1, _non_volatile, false /* set QE=1 */);
 
   if (pass1 && pass2) {
     /* success with QE/S6= 0 or 1 */
@@ -496,18 +512,18 @@ bool check_QE_WP_S9() {
   bool _non_volatile = (fd_state.has_volatile) ? volatile_bit : non_volatile_bit;
 
   Serial.PRINTF_LN("  Set context SRP1:SRP0 0:1");
-  test_set_SRP1_SRP0_clear_QE(9u, write_status_register_16_bit, _non_volatile);
+  test_set_SRP1_SRP0_clear_QE(9u, fd_state.has_16bw_sr1, _non_volatile);
   printSR321("  ");
 
-  bool pass_SRP01_QE0 = testOutputGPIO10(9u, write_status_register_16_bit, _non_volatile, true  /* use QE=0 */);
-  bool pass_SRP01_QE1 = testOutputGPIO10(9u, write_status_register_16_bit, _non_volatile, false /* set QE=1 */);
+  bool pass_SRP01_QE0 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, true  /* use QE=0 */);
+  bool pass_SRP01_QE1 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, false /* set QE=1 */);
 
   Serial.PRINTF_LN("  Clear context SRP1:SRP0 0:0");
-  test_clear_SRP1_SRP0_QE(9u, write_status_register_16_bit, _non_volatile);
+  test_clear_SRP1_SRP0_QE(9u, fd_state.has_16bw_sr1, _non_volatile);
   printSR321("  ");
 
-  bool pass_SRP00_QE0 = testOutputGPIO10(9u, write_status_register_16_bit, _non_volatile, true  /* use QE=0 */);
-  bool pass_SRP00_QE1 = testOutputGPIO10(9u, write_status_register_16_bit, _non_volatile, false /* set QE=1 */);
+  bool pass_SRP00_QE0 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, true  /* use QE=0 */);
+  bool pass_SRP00_QE1 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, false /* set QE=1 */);
 
   if (pass_SRP00_QE1) {
     /*
@@ -540,7 +556,7 @@ bool check_QE_WP_S9() {
     /* no resolution found */
     Serial.PRINTF_LN("* No conclusion on how to disable pin function /WP using SRP1:SRP0 and QE/S9");
     Serial.PRINTF_LN("  Clear context SRP1:SRP0 0:0 and QE=0");
-    test_clear_SRP1_SRP0_QE(9u, write_status_register_16_bit, volatile_bit);
+    test_clear_SRP1_SRP0_QE(9u, fd_state.has_16bw_sr1, volatile_bit);
     printSR321("  ");
   }
 
@@ -579,24 +595,6 @@ bool check_QE_WP() {
   return pass;
 }
 
-bool analyze_this(const uint32_t hint) {
-  bool pass = true;
-  if (analyze_SR_QE(hint)) {
-    if (fd_state.S6) {
-      modal_qe_bit = 6u;
-    } else
-    if (fd_state.S9) {
-      modal_qe_bit = 9u;
-    } else {
-      modal_qe_bit = 0xFFu;
-    }
-    write_status_register_16_bit = fd_state.has_16bw_sr1;
-  } else {
-    resetModalValues();
-    pass = false;
-  }
-  return pass;
-}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -606,15 +604,19 @@ bool processKey(const int key) {
   last_key = key;
 
   switch (key) {
+    case '3':
+      printSR321();
+      break;
+
     case 'a':
-      pass = analyze_this(8u);  // hint QE/S9
+      pass = analyze_SR_QE(8u);  // hint QE/S9
       if (!scripting && pass) {
         Serial.PRINTF_LN("\nTo continue verification, run /WP test, menu 'w'");
       }
       break;
 
     case 'A':
-      pass = analyze_this(6u);  // hint QE/S6
+      pass = analyze_SR_QE(6u);  // hint QE/S6
       if (!scripting && pass) {
         Serial.PRINTF_LN("\nTo continue verification, run /WP test, menu 'w'");
       }
@@ -633,7 +635,7 @@ bool processKey(const int key) {
     case 'h':
       if (fd_state.pass_WP) {
         // For this test, we use the Flash Status Register as left by 'w'
-        pass = testOutputGPIO9(modal_qe_bit, write_status_register_16_bit,
+        pass = testOutputGPIO9(get_qe_pos(), fd_state.has_16bw_sr1,
           (fd_state.has_volatile) ? volatile_bit : non_volatile_bit, true);
       } else {
           Serial.PRINTF_LN("\nMissing prerequisite test, run /WP test, menu 'w'");
@@ -649,63 +651,52 @@ bool processKey(const int key) {
       break;
     //
     case '8':
-      write_status_register_16_bit = false;
+      // write_status_register_16_bit = false;
       fd_state.has_8bw_sr2 = true;
       fd_state.has_16bw_sr1 = false;
-      Serial.PRINTF_LN("%c 8 - Modal:  8-bits Write Status Register", (write_status_register_16_bit) ? ' ' : '>');
+      fd_state.pass_WP = false;       // Reset test results
+      fd_state.pass_HOLD = false;
+      Serial.PRINTF_LN("%c 8 - Set discovery:  8-bits Write Status Register and clear 16-bit SR1", (fd_state.has_16bw_sr1) ? ' ' : '>');
       break;
     case '7':
-      write_status_register_16_bit = true;
+      // write_status_register_16_bit = true;
       fd_state.has_16bw_sr1 = true;
       fd_state.has_8bw_sr2 = false;  // We really don't know
-      Serial.PRINTF_LN("%c 7 - Modal: 16-bits Write Status Register", (write_status_register_16_bit) ? '>' : ' ');
+      fd_state.pass_WP = false;
+      fd_state.pass_HOLD = false;
+      Serial.PRINTF_LN("%c 7 - Set discovery: 16-bits Write Status Register and clear 8-bit SR2", (fd_state.has_16bw_sr1) ? '>' : ' ');
       break;
     case '6':
-      modal_qe_bit = 6u;
+      // QE/S6;
       fd_state.S9 = false;
       fd_state.S6 = true;
-      Serial.PRINTF_LN("%c 6 - Modal: S6/QE Status Register", (6u == modal_qe_bit) ? '>' : ' ');
+      fd_state.has_8bw_sr2 = false;
+      fd_state.has_16bw_sr1 = false;
+      fd_state.pass_WP = false;
+      fd_state.pass_HOLD = false;
+      Serial.PRINTF_LN("%c 6 - Set discovery: QE/S6 Status Register and clear 16-bit SR1 & 8-bit SR2", (fd_state.S6) ? '>' : ' ');
       break;
     case '9':
-      modal_qe_bit = 9u;
+      // QE/S9
       fd_state.S9 = true;
       fd_state.S6 = false;
-      Serial.PRINTF_LN("%c 9 - Modal: S9/QE Status Register", (9u == modal_qe_bit) ? '>' : ' ');
+      fd_state.pass_WP = false;
+      fd_state.pass_HOLD = false;
+      Serial.PRINTF_LN("%c 9 - Set discovery: QE/S9 Status Register", (fd_state.S9) ? '>' : ' ');
       break;
-    case '5':
-    case 'M':
-    case 'm':
-      switch (key) {
-        case 'M':
-          qe_was_preset = true;
-          break;
-        case 'm':
-          qe_was_preset = false;
-          break;
-        default:
-        case '5':
-          qe_was_preset = ! qe_was_preset;
-          break;
-      }
-      Serial.PRINTF_LN("\nUpdated Modal selection");
-      if (qe_was_preset) {
-        Serial.PRINTF("  The current Status Register values will be used for options: 'h', 'w', 'v'\n"
-                      "  Use options 'Q', 'q', 'E', or 'e' to change the Status Register QE bit.\n");
-      } else {
-        Serial.PRINTF_LN("  Modal settings will be used for options: 'h', 'w', 'v'");
-      }
+    //
+    case '0':
+      // modal_qe_bit = 9u;
+      fd_state.S9 = false;
+      fd_state.S6 = false;
+      fd_state.pass_WP = false;
+      fd_state.pass_HOLD = false;
+      Serial.PRINTF_LN("%c 0 - Set discovery: QE not available", (fd_state.S9 || fd_state.S6) ? ' ' : '>');
       break;
 
     case 'f':
       printSfdpReport();
       break;
-
-    case 'v':
-      testInput_GPIO9_GPIO10(modal_qe_bit, write_status_register_16_bit,
-        (fd_state.has_volatile) ? volatile_bit : non_volatile_bit, qe_was_preset);
-      break;
-
-
 
     // Evaluate S9 as
     //   hotkey 'Q' or 'E' => QE=1
@@ -717,38 +708,41 @@ bool processKey(const int key) {
     case 'E':
     case 'e':
       {
-        Serial.PRINTF("\nUpdate QE=");
+        bool _non_volatile = ('Q' == key) || ('q' == key);
+        if (fd_state.has_volatile && !_non_volatile) {
+          Serial.PRINTF_LN("%s\n* the volatile Status Register option is not available.", "Update QE");
+          break;
+        }
         uint32_t status = 0;
         SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
         if (SPI_RESULT_OK != ok0) {
-          Serial.PRINTF_LN("* SR321 read operation failed!");
+          Serial.PRINTF_LN("%s\n* SR321 read operation failed!", "Update QE");
           break;
         }
-        bool _non_volatile = ('Q' == key) || ('q' == key);
         bool set_QE = ('Q' == key) || ('E' == key);
-        Serial.PRINTF_LN("%u bit in %svolatile flash status register, SR321 0x%06X", (set_QE) ? 1u : 0, (_non_volatile) ? "non-" : "", status);
+        Serial.PRINTF_LN("%s=%u bit in %svolatile flash status register, SR321 0x%06X", "Update QE", (set_QE) ? 1u : 0, (_non_volatile) ? "non-" : "", status);
 
         pass = false;
         if (set_QE) {
-          if (9u == modal_qe_bit) {
-            if (write_status_register_16_bit) {
+          if (fd_state.S9) {
+            if (fd_state.has_16bw_sr1) {
               pass = set_S9_QE_bit__16_bit_sr1_write(_non_volatile);
             } else {
               pass = set_S9_QE_bit__8_bit_sr2_write(_non_volatile);
             }
           } else
-          if (6u == modal_qe_bit) {
+          if (fd_state.S6) {
             pass = set_S6_QE_bit_WPDis(_non_volatile);
           }
         } else {
-          if (9u == modal_qe_bit) {
-            if (write_status_register_16_bit) {
+          if (fd_state.S9) {
+            if (fd_state.has_16bw_sr1) {
               pass = clear_S9_QE_bit__16_bit_sr1_write(_non_volatile);
             } else {
               pass = clear_S9_QE_bit__8_bit_sr2_write(_non_volatile);
             }
           } else
-          if (6u == modal_qe_bit) {
+          if (fd_state.S6) {
             pass = clear_S6_QE_bit_WPDis(_non_volatile);
           }
         }
@@ -762,23 +756,9 @@ bool processKey(const int key) {
       }
       break;
 
-    case 'r':
-      if (qe_was_preset || gpio_9_10_available) {
-        Serial.PRINTF_LN("reclaim_GPIO_9_10() has already been successfully called. Reboot to run again.");
-      } else {
-        Serial.PRINTF_LN("Test call to reclaim_GPIO_9_10()");
-        gpio_9_10_available = reclaim_GPIO_9_10();
-      }
-      qe_was_preset = true;
-      break;
-
-    case '3':
-      printSR321();
-      break;
-
     case 'R':
       Serial.PRINTF_LN("Restart ...");
-      test_clear_SRP1_SRP0_QE(modal_qe_bit, write_status_register_16_bit, volatile_bit);
+      test_clear_SRP1_SRP0_QE(get_qe_pos(), fd_state.has_16bw_sr1, volatile_bit);
       Serial.flush();
       ESP.restart();
       break;
@@ -822,39 +802,39 @@ bool processKey(const int key) {
 
     case '?':
       Serial.PRINTF_LN("\r\nHot key help:");
-      Serial.PRINTF_LN("\n  TODO: manual mode via Modal needs work to meld with FlashDiscovery table\n");
+      Serial.PRINTF_LN("\nAnalyze:");
       Serial.PRINTF_LN("  3 - SPI Flash Read Status Registers, 3 Bytes");
-      Serial.PRINTF_LN("  a - Analyze Status Register Writes and set selection (Modal) flags accordingly");
-      Serial.PRINTF_LN("  A - Analyze Status Register Writes and set selection (Modal) flags accordingly, uses hint S6");
+      Serial.PRINTF_LN("  a - Analyze Status Register Writes remembers discovered results. leans toward QE/S9");
+      Serial.PRINTF_LN("  A - Analyze Status Register Writes remembers discovered results, uses hint QE/S6");
       Serial.PRINTF_LN("  f - Print SFDP Data");
+      Serial.PRINTF_LN("  r - Run analyze script");
       Serial.PRINTF_LN();
-      Serial.PRINTF_LN("%c 8 - Modal:  8-bits Write Status Register", (write_status_register_16_bit) ? ' ' : '>');
-      Serial.PRINTF_LN("%c 7 - Modal: 16-bits Write Status Register", (write_status_register_16_bit) ? '>' : ' ');
-      Serial.PRINTF_LN("%c 6 - Modal: S6/QE Status Register", (6u == modal_qe_bit) ? '>' : ' ');
-      Serial.PRINTF_LN("%c 9 - Modal: S9/QE Status Register", (9u == modal_qe_bit) ? '>' : ' ');
-      Serial.PRINTF_LN("%c 5 - Modal: Use modal values defined above", (qe_was_preset) ? ' ' : '>');
-      if (qe_was_preset) {
-      Serial.PRINTF_LN("      The current Status Register values will be used for options: 'h', 'w', 'v'");
-      Serial.PRINTF_LN("      Use options 'Q', 'q', 'E', or 'e' to change the Status Register QE bit.");
-      } else {
-      Serial.PRINTF_LN("      Modal settings will be used for options: 'h', 'w', 'v'");
-      }
-      Serial.PRINTF_LN();
-      if (9u == modal_qe_bit || 6u == modal_qe_bit) {
-      Serial.PRINTF_LN("  Q - Set SR, non-volatile WEL 06h, then set QE/S%u=1", modal_qe_bit);
-      Serial.PRINTF_LN("  q - Set SR, non-volatile WEL 06h, then set QE/S%u=0", modal_qe_bit);
-      Serial.PRINTF_LN("  E - Set SR, volatile 50h, then set QE/S%u=1", modal_qe_bit);
-      Serial.PRINTF_LN("  e - Set SR, volatile 50h, then set QE/S%u=0", modal_qe_bit);
-      } else {
-      Serial.PRINTF_LN("  - - Select a QE Status Register bit to enable hotkeys 'Q', 'q', 'E', 'e'");
-      }
-      Serial.PRINTF_LN();
+      Serial.PRINTF_LN("Tests:");
       Serial.PRINTF_LN("  h - Test /HOLD digitalWrite( 9, LOW)");
       Serial.PRINTF_LN("  w - Test /WP   digitalWrite(10, LOW) and write to Flash");
       Serial.PRINTF_LN("  p - Print 'spi_flash_vendor_cases()' example function");
-      Serial.PRINTF_LN("  v - Test GPIO9 and GPIO10 INPUT");
-      Serial.PRINTF_LN("%c r - Test call to 'reclaim_GPIO_9_10()'%s", (gpio_9_10_available) ? '>' : ' ', (gpio_9_10_available) ? " - already called" : "");
       Serial.PRINTF_LN();
+      Serial.PRINTF_LN("Manual set/clear discovery flags:");
+      Serial.PRINTF_LN("%c 8 - Set discovery:  8-bits Write Status Register and clear 16-bit SR1", (fd_state.has_16bw_sr1) ? ' ' : '>');
+      Serial.PRINTF_LN("%c 7 - Set discovery: 16-bits Write Status Register and clear 8-bit SR2", (fd_state.has_16bw_sr1) ? '>' : ' ');
+      Serial.PRINTF_LN("%c 6 - Set discovery: QE/S6 Status Register and clear 16-bit SR1 & 8-bit SR2", (fd_state.S6) ? '>' : ' ');
+      Serial.PRINTF_LN("%c 9 - Set discovery: QE/S9 Status Register", (fd_state.S9) ? '>' : ' ');
+      Serial.PRINTF_LN("%c 0 - Set discovery: QE not available", (fd_state.S9 || fd_state.S6) ? ' ' : '>');
+      Serial.PRINTF_LN();
+      Serial.PRINTF_LN("Manual set/clear QE:");
+      if (fd_state.S9 || fd_state.S6) {
+        Serial.PRINTF_LN("  Q - Set SR, non-volatile WEL 06h, then set QE/S%u=1", get_qe_pos());
+        Serial.PRINTF_LN("  q - Set SR, non-volatile WEL 06h, then set QE/S%u=0", get_qe_pos());
+        if (fd_state.has_volatile) {
+          Serial.PRINTF_LN("  E - Set SR, volatile 50h, then set QE/S%u=1", get_qe_pos());
+          Serial.PRINTF_LN("  e - Set SR, volatile 50h, then set QE/S%u=0", get_qe_pos());
+        }
+      } else {
+        Serial.PRINTF_LN("  - - Select a QE Status Register bit to enable hotkeys 'Q', 'q', 'E', 'e'");
+      }
+
+      Serial.PRINTF_LN();
+      Serial.PRINTF_LN("Misc.");
       Serial.PRINTF_LN("  d - Clear WEL bit, write enable");
       Serial.PRINTF_LN("  S - SPI Flash - Software Reset 66h, 99h");
       Serial.PRINTF_LN("  R - Restart");

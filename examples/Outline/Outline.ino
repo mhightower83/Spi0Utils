@@ -40,6 +40,7 @@ void loop() {
 }
 
 #if RECLAIM_GPIO_EARLY
+extern "C"
 void preinit() {
   /*
     If using `-DDEBUG_FLASH_QE=1`, reclaim_GPIO_9_10() printing will be at

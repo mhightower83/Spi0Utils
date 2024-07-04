@@ -45,7 +45,8 @@
    * When QE is S6 there is often no Status Register-2.
      Assumes no SRP0 or SRP1 and write zero to those bits.
    * A Flash with only non-volatile Status Register bits is of concern due to
-     the risk of bricking a device the automated analyze will fail/stop.
+     the risk of bricking a device. Once detected, the automated analyze will
+     fail/stop.
 */
 
 #include <Arduino.h>
@@ -55,7 +56,7 @@
 #include <TestFlashQE/FlashChipId.h>
 #include <TestFlashQE/SFDP.h>
 #include <TestFlashQE/WP_HOLD_Test.h>
-#include "SfdpRevInfo.h"
+#include <SfdpRevInfo.h>
 
 // Flash safety defaults to On.
 // Ensure BUILD_OPTION_FLASH_SAFETY_OFF has a numeric value.
@@ -117,7 +118,7 @@ static void resetFlashDiscovery() {
   fd_state.pass_HOLD = false;
 }
 
-union SfdpRevInfo sfdpInfo;
+experimental::SfdpRevInfo sfdpInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -230,15 +231,10 @@ void runScript(int next_key) {
       // succeed with /WP, enable and disable write protect with QE.
 
       // At this point, we have a guess for QE bit either S9 or S6
-
-      // 'M' Not required for 'w' and 'h'. (keep for now)
-      //   'w' will do all the setting and clearing of Status Register bits.
-      //   'h' will use the state left behind by a successful 'w' test.
-      processKey('M');
       if (processKey('w')) {
-        // Test /HOLD while QE=1 (or the final passing state of 'w' test) - this
-        // is a final confirmation that we have free-ed GPIO9 and GPIO10 uses
-        // settings suggested by 'w'
+        // Test /HOLD while QE=1 (or the final passing QE value from 'w' test) -
+        // this is a final confirmation that we have free-ed GPIO9 and GPIO10
+        // uses settings suggested by 'w'
         if (processKey('h')) {
           suggestedReclaimFn();
         } else {
@@ -262,10 +258,10 @@ void runScript(int next_key) {
 }
 
 extern "C" void patchEarlyCrashReason() {
-  // Early HWDT crashes are missed and report reason as 0 and often are
-  // treated as REASON_DEFAULT_RST. The problem still exist in SDK 3.05.
-  // The problem can be seen with crashes in preinit(), setup(), and extend
-  // into the 1st pass through `loop()`.
+  // An early HWDT crash is miss misdentified by the SDK. It reports the reason
+  // as 0 and are often treated as REASON_DEFAULT_RST. The problem still exist
+  // in SDK 3.05. The problem can be seen with crashes in preinit(), setup(),
+  // and extend into the 1st pass through `loop()`.
   // A workaround is to set word offset 0x0 in system RTC to REASON_WDT_RST from
   // setup(), preinit() or first pass of loop().
   uint32_t save_ps = xt_rsil(15u);
@@ -302,7 +298,7 @@ void setup() {
           break;
 
         case 'h':   // /HOLD test GPIO10
-          Serial.PRINTF_LN("unexpected but anticipated crash while testing `/HOLD`");
+          Serial.PRINTF_LN("unwanted but anticipated crash while testing `/HOLD`");
           break;
 
         case 'a':   // Analyze
@@ -317,16 +313,12 @@ void setup() {
       Serial.PRINTF_LN("\nUnable to configure Flash Status Register to free GPIO9 and GPIO10");
       break;
 
-    // case REASON_DEFAULT_RST:      // 0
-    // case REASON_SOFT_RESTART:     // 4
-    // case REASON_DEEP_SLEEP_AWAKE: // 5
-    // case REASON_EXT_SYS_RST:      // 6
-    //   Serial.PRINTF("\n0x%02X, ", reason);
-    //   Serial.PRINTF_LN("REASON_DEFAULT_RST");
-      break;
-
+    // REASON_DEFAULT_RST:      // 0
+    // REASON_SOFT_RESTART:     // 4
+    // REASON_DEEP_SLEEP_AWAKE: // 5
+    // REASON_EXT_SYS_RST:      // 6
     default:
-      Serial.PRINTF_LN("\n0x%02X\n", reason);
+      Serial.PRINTF_LN("\nreset reason: 0x%02X", reason);
       run_once = true;
       last_key = '?';
       break;
@@ -334,7 +326,6 @@ void setup() {
 }
 
 void loop() {
-
   if (run_once) {
     run_once = false;
     patchEarlyCrashReason();

@@ -44,8 +44,8 @@ void setup() {
     /*
       Add additional GPIO pin initialization here
     */
-    digitalWrite(9, LOW);
-    digitalWrite(10, LOW);
+    digitalWrite(9, HIGH);    // Assumes LED is on when set LOW
+    digitalWrite(10, HIGH);
     pinMode(9, OUTPUT);
     pinMode(10, OUTPUT);
   }

@@ -201,6 +201,7 @@ bool gpio_9_10_available __attribute__((section(".noinit")));
 
 // If early initialization of GPIO pins is not needed, `reclaim_GPIO_9_10()`
 // can be called from `setup()`
+extern "C"
 void preinit(void) {
   SHARE_PREINIT__DEBUG_ESP_BACKTRACELOG();
 

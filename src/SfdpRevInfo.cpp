@@ -5,50 +5,16 @@
 // with identical `spi_flash_get_id()` results. Limited info returns version
 // info and Parameter Table pointer and size.
 #include <Arduino.h>
-#include <SpiFlashUtils.h>
+#include "SpiFlashUtils.h"
+#include "SfdpRevInfo.h"
 
-union SFDP_Hdr {
-  struct {
-    uint32_t signature:32;
-    uint32_t rev_minor:8;
-    uint32_t rev_major:8;
-    uint32_t num_param_hdrs:8;
-    uint32_t access_protocol:8;
-  };
-  uint32_t u32[2];
-};
+namespace experimental {
 
-union SFDP_Param {
-  struct {
-    uint32_t id_lsb:8;
-    uint32_t rev_minor:8;
-    uint32_t rev_major:8;
-    uint32_t sz_dw:8;
-    uint32_t tbl_ptr:24;
-    uint32_t id_msb:8;
-  };
-  uint32_t u32[2];
-};
-
-union SfdpRevInfo {
-  struct {
-    uint32_t hdr_minor:8;
-    uint32_t hdr_major:8;
-    uint32_t parm_minor:8;
-    uint32_t parm_major:8;
-    uint32_t sz_dw:8;
-    uint32_t tbl_ptr:24;
-  };
-  uint32_t u32[2];
-};
-
-union SfdpRevInfo get_sfdp_revision() {
-  using namespace experimental;
-
-  union SFDP_Hdr sfdp_hdr;
-  union SFDP_Param sfdp_param;
-  union SfdpRevInfo rev;
-  rev.u32[0] = rev.u32[1] = 0;
+SfdpRevInfo get_sfdp_revision() {
+  SfdpHdr sfdp_hdr;
+  SfdpParam sfdp_param;
+  SfdpRevInfo rev;
+  memset(&rev.u32[0], 0, sizeof(SfdpRevInfo));
 
   size_t sz = sizeof(sfdp_hdr);
   size_t addr = 0u;
@@ -56,6 +22,7 @@ union SfdpRevInfo get_sfdp_revision() {
   if (SPI_RESULT_OK == ok0 && 0x50444653 == sfdp_hdr.signature) {
     rev.hdr_major = sfdp_hdr.rev_major;
     rev.hdr_minor = sfdp_hdr.rev_minor;
+    rev.num_parm_hdrs = sfdp_hdr.num_parm_hdrs;
 
     addr += sz;
     sz = sizeof(sfdp_param);
@@ -67,6 +34,10 @@ union SfdpRevInfo get_sfdp_revision() {
       rev.sz_dw = sfdp_param.sz_dw;
       rev.tbl_ptr = sfdp_param.tbl_ptr;
     }
+  } else {
+    memset(&rev.u32[0], 0, sizeof(SfdpRevInfo));
   }
   return rev;
 }
+
+};
