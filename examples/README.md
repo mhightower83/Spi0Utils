@@ -1,13 +1,13 @@
 # Directory Listing for Example
 
-For compatible SPI Flash memory, the SPI Flash can be setup to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules, NodeMCU DEV boards, and other modules that expose those pins.
+For compatible SPI Flash memory, the SPI Flash can be set up to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules, NodeMCU DEV boards, and other modules that expose those pins.
 
 
 ## [Analyze](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Analyze)
 
 Evaluate the Flash memory for required attributes.
-Report if the current code supports the device as is.
-Prints a copy/paste block for creating `CustomVender.ino` file like that shown in [OutlineCustom](#OutlineCustom) example.
+Reports if the current code supports the device as is.
+Prints a copy/paste block for creating a `CustomVender.ino` file like that shown in example [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom).
 
 
 ## [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline)
@@ -25,8 +25,8 @@ Similar to "Outline" above. Illustrates adding support for an additional Flash p
 
 ## [Blinky](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Blinky)
 
-A blinking LED example. An adaptation of the example (https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline) that does something with GPIO9 and GPIO10.
-You can also add module `CustomVendor.ino` if needed.
+A blinking LED example. An adaptation of the example [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline) using GPIO9 and GPIO10.
+You can also add the module `CustomVendor.ino` if needed.
 
 ## [SFDPHexDump](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/SFDPHexDump)
 
@@ -37,9 +37,9 @@ Standalone version - It doesn't require the SpiFlashUtils library
 
 An example using `experimental::SPI0Command` function to read SPI Flash Data Parameters from Flash and print a hex dump.
 
-To understand the dump, you will need access to JEDEC documentation. In some cases, the SPI Flash vendor's datasheet will list an explanation of their SFDP data.
+To understand the dump, you will need access to JEDEC documentation. Sometimes, the SPI Flash vendor's datasheet will explain their SFDP data.
 
-The "SFDP" may be used to discern between parts at different revision levels.
+Use "SFDP" to discern between parts at different revision levels.
 
 Reference:
 ```
@@ -82,11 +82,11 @@ I think this example needs more work? It still feels a bit complicated to drive.
 
 **Plan to remove**
 
-This probably doesn't belong here; however, It need a home for archiving purposes.
+This probably doesn't belong here; however, It needs a home for archiving purposes.
 
 Uses a kludged together non-OS wrapper for running some code with the bare necessities.
 This is not a true Arduino Sketch. It is closer to a low-level ESP8266 program running with some code fragments from the BootROM, NONOS SDK, and Arduino ESP8266.
 Use build option `MMU:"16K Cache + 48K IRAM"`
 
 This unorthodox Sketch generates low jitter signals for viewing on an oscilloscope.
-Specifically for viewing ringing, rise, and fall times of GPIO pins.
+Specifically for viewing the ringing, rise, and fall times of GPIO pins.
