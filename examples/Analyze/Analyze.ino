@@ -1,5 +1,6 @@
 /*
-  Goals for this example
+  A SPI Flash test/analyzer that generates example/sample code for function
+  `spi_flash_vendor_cases` using the results from the tests.
 
   Determine if the SPI Flash has support for disabling pin functions /WP
   write protect and /HOLD. Or confirm that those functions are not active.
@@ -9,7 +10,7 @@
   At boot "Analyze" will attempt to discover the properties of your SPI Flash.
   It will generate a progress report as it goes. If your device is already
   supported, it will indicate so. Otherwise if the evaluation is successful, it
-  will print the contents of a sample "CustomVender.ino "file that you can use
+  will print the contents of a sample "CustomVender.ino" file that you can use
   with you sketch. See example "OutlineCustom" for more info on using it.
 
   It may be overly optomistic to think that all ESP modules that expose
@@ -39,14 +40,19 @@
   If the device has feature pin functions /WP and/or /HOLD we need a way to turn
   them off. Some combination of "QE" and/or "SRP0 and SRP1" may do this.
 
-  This code expects the following
+  This code expects/assumes the following
    * QE at either S9 or S6
    * If QE is S9, then SRP0 and SRP1 are available.
    * When QE is S6 there is often no Status Register-2.
      Assumes no SRP0 or SRP1 and write zero to those bits.
+   * Flash supports non-volatile Status Register-1 with write enable cmd 06h
+   * If volatile Status Register is available, then write enable CMD 50h
    * A Flash with only non-volatile Status Register bits is of concern due to
      the risk of bricking a device. Once detected, the automated analyze will
-     fail/stop.
+     fail/stop. To overide, use the hotkey menu to select the capitalized
+     analyze options 'A' or 'B'.
+   * Status Register does not have any OTP bits set.
+   * SFDP is not required or used at this time.
 */
 
 #include <Arduino.h>
@@ -57,15 +63,6 @@
 #include <TestFlashQE/SFDP.h>
 #include <TestFlashQE/WP_HOLD_Test.h>
 #include <SfdpRevInfo.h>
-
-// Flash safety defaults to On.
-// Ensure BUILD_OPTION_FLASH_SAFETY_OFF has a numeric value.
-#if ((1 - BUILD_OPTION_FLASH_SAFETY_OFF - 1) == 2)
-#undef BUILD_OPTION_FLASH_SAFETY_OFF
-// empty defines will be assigned 0
-// To turn off safety, BUILD_OPTION_FLASH_SAFETY_OFF must be explicitly set to 1.
-#define BUILD_OPTION_FLASH_SAFETY_OFF 0
-#endif
 
 // #define NOINLINE __attribute__((noinline))
 #define ETS_PRINTF ets_uart_printf
@@ -96,14 +93,21 @@ struct FlashDiscovery {
   bool S6 = false;
   bool WP = false;                // pin function /WP exist
 //D bool has_QE = false;
-  bool has_8bw_sr1 = false;        // When true, WEL write operation succeeded
-  bool has_8bw_sr2 = false;        // "
-  bool has_16bw_sr1 = false;       // ", false possitive - some devices w/o SR2 may clear WEL
+  bool has_8bw_sr1 = false;       // When true, WEL write operation succeeded
+  bool has_8bw_sr2 = false;       // "
+  bool has_8bw_sr3 = false;       // "
+  bool has_16bw_sr1 = false;      // "      //D-> TODO recheck i think this was an interpitation problem, false possitive - some devices w/o SR2 may clear WEL
   bool has_volatile = false;
   bool write_QE = false;          // No writable QE bit candidate
   bool pass_WP = false;
   bool pass_HOLD = false;
 } fd_state;
+
+static uint32_t get_qe_pos() {
+  if (fd_state.S9) return 9u;
+  if (fd_state.S6) return 6u;
+  return 0xFFu;                   // QE not defined or does not exist.
+}
 
 static void resetFlashDiscovery() {
   fd_state.S9 = false;
@@ -111,6 +115,7 @@ static void resetFlashDiscovery() {
   fd_state.WP = false;
   fd_state.has_8bw_sr1 = false;
   fd_state.has_8bw_sr2 = false;
+  fd_state.has_8bw_sr3 = false;
   fd_state.has_16bw_sr1 = false;
   fd_state.has_volatile = false;
   fd_state.write_QE = false;
@@ -126,7 +131,7 @@ bool gpio_9_10_available = false;
 bool scripting = true;
 int last_key __attribute__((section(".noinit")));
 
-void printSR321(const char *indent="");
+void printSR321(const char *indent = "", const bool = false);
 
 void printReclaimFn() {
     Serial.PRINTF("\n"
@@ -277,12 +282,14 @@ extern "C" void patchEarlyCrashReason() {
 bool run_once = false;
 
 void setup() {
+  patchEarlyCrashReason();
+
   Serial.begin(115200);
   delay(200);
   Serial.PRINTF_LN(
     "\r\n\r\n"
-    "Analyze Flash for reclaiming GPIO9 and GPIO10 support.");
-  printSR321("  ");
+    "Analyze Flash for reclaiming GPIO9 and GPIO10 support");
+  printSR321("  ", true);
   fd_state.device = printFlashChipID("  ");
 
   Serial.PRINTF_LN("  Reset reason: %s", ESP.getResetReason().c_str());
@@ -291,7 +298,6 @@ void setup() {
     case REASON_WDT_RST:          // 1
     case REASON_EXCEPTION_RST:    // 2
     case REASON_SOFT_WDT_RST:     // 3
-      Serial.PRINTF("\n0x%02X, ", reason);
       switch (last_key) {
         case 'w':   // /WP test GPIO9
           Serial.PRINTF_LN("unexpected crash while testing `/WP`");
@@ -318,7 +324,6 @@ void setup() {
     // REASON_DEEP_SLEEP_AWAKE: // 5
     // REASON_EXT_SYS_RST:      // 6
     default:
-      Serial.PRINTF_LN("\nreset reason: 0x%02X", reason);
       run_once = true;
       last_key = '?';
       break;
@@ -328,7 +333,6 @@ void setup() {
 void loop() {
   if (run_once) {
     run_once = false;
-    patchEarlyCrashReason();
     runScript('a');   // Start Analyze
   }
   serialClientLoop();

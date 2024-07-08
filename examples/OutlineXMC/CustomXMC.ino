@@ -49,23 +49,22 @@ bool spi_flash_vendor_cases(uint32_t device) {
     // XMC XM25QH32B
     // SFDP Revision: 1.00, 1ST Parameter Table Revision: 1.00
     // SFDP Table Ptr: 0x30, Size: 36 Bytes
-    // Backup Status Register-3
-    ///
+    //
     // Datasheet: Rev 2.1 issue date 2023/12/15
     // XMC XM25QH32C
     // SFDP Revision: 1.06, 1ST Parameter Table Revision: 1.06
     // SFDP Table Ptr: 0x30, Size: 36 Bytes
     //
     // Special handling for XMC XM25QH32B anomaly where driver strength value is
-    // lost when switching from non-volatile to volatile.
-    // TODO is this an issue when using _16_bit_sr1_write
+    // lost when switching from non-volatile to volatile requires backup/restore
+    // of Status Register-3.
     uint32_t status3 = 0;
     SpiOpResult ok0 = spi0_flash_read_status_register_3(&status3);
     success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
     /*
-      Treat the data in this example as hypothetical. While the data came from
-      the vendor's datasheets, without real hardware to inspect we cannot be
-      sure the data I used was from a typo.
+      Consider this example a hypothetical. While the data came from the
+      vendor's datasheets, without real hardware to inspect, we cannot be sure,
+      the data I used was not a typo.
     */
     if (SPI_RESULT_OK == ok0) {
       // Copy Driver Strength value from non-volatile to volatile
@@ -90,7 +89,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
           newSR3 &= ~(SPI_FLASH_SR3_XMC_DRV_MASK << SPI_FLASH_SR3_XMC_DRV_S);
           newSR3 |= (SPI_FLASH_SR3_XM25QH32C_DRV_100 << SPI_FLASH_SR3_XMC_DRV_S);
         }
-        // no change on all others
+        // For all others, no change
       }
       ok0 = spi0_flash_write_status_register_3(newSR3, volatile_bit);
       DBG_SFU_PRINTF("  XMC Anomaly: Copy Driver Strength values to volatile status register.\n");

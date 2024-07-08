@@ -75,28 +75,28 @@ constexpr uint8_t kReadSecurityRegisterCmd    = 0x48u;
 // These two are seldom needed when using SPI0Command's pre_cmd argument
 inline
 SpiOpResult spi0_flash_write_volatile_enable(void) {
-  return SPI0Command(kVolatileWriteEnableCmd, NULL, 0, 0);
+  return SPI0Command(kVolatileWriteEnableCmd, NULL, 0u, 0);
 }
 inline
 SpiOpResult spi0_flash_write_enable(void) {
-  return SPI0Command(kWriteEnableCmd, NULL, 0, 0);
+  return SPI0Command(kWriteEnableCmd, NULL, 0u, 0);
 }
 
 inline
 SpiOpResult spi0_flash_write_disable() {
-  return SPI0Command(kWriteDisableCmd, NULL, 0, 0);
+  return SPI0Command(kWriteDisableCmd, NULL, 0u, 0);
 }
 
 #if 0
 inline
 SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
-  *pStatus = 0;
-  return SPI0Command(kReadStatusRegister1Cmd, pStatus, 0, 8u);
+  *pStatus = 0u;
+  return SPI0Command(kReadStatusRegister1Cmd, pStatus, 0u, 8u);
 }
 #else
 inline
 SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
-  *pStatus = 0;
+  *pStatus = 0u;
   // Use the version provided by the SDK - return enums are the same
   return (SpiOpResult)spi_flash_read_status(pStatus);
 }
@@ -104,7 +104,7 @@ SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
 
 inline
 SpiOpResult spi0_flash_read_status_register(const size_t idx0, uint32_t *pStatus) {
-  *pStatus = 0;
+  *pStatus = 0u;
   uint8_t cmd;
   if (0u == idx0) {
     cmd = kReadStatusRegister1Cmd;
@@ -116,7 +116,7 @@ SpiOpResult spi0_flash_read_status_register(const size_t idx0, uint32_t *pStatus
     // panic();
     return SPI_RESULT_ERR;
   }
-  return SPI0Command(cmd, pStatus, 0, 8u);
+  return SPI0Command(cmd, pStatus, 0u, 8u);
 }
 
 inline
@@ -130,7 +130,7 @@ SpiOpResult spi0_flash_read_status_register_3(uint32_t *pStatus) {
 
 inline
 SpiOpResult spi0_flash_write_status_register(const uint32_t idx0, uint32_t status, const bool non_volatile, const uint32_t numbits = 8) {
-  uint8_t cmd = 0;
+  uint8_t cmd = 0u;
   if (0u == idx0) {
     cmd = kWriteStatusRegister1Cmd;
   } else if (1u == idx0) {
@@ -148,7 +148,7 @@ SpiOpResult spi0_flash_write_status_register(const uint32_t idx0, uint32_t statu
     prefix = kVolatileWriteEnableCmd;
   }
 
-  SpiOpResult ok0 = SPI0Command(cmd, &status, numbits, 0, prefix);
+  SpiOpResult ok0 = SPI0Command(cmd, &status, numbits, 0u, prefix);
   // Optimization - this is not a high use function.
   // Always call - save the code of testing for failure of Write
   spi0_flash_write_disable();
@@ -162,7 +162,7 @@ SpiOpResult spi0_flash_write_status_register_1(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister1Cmd, &status, numbits, 0, prefix);
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister1Cmd, &status, numbits, 0u, prefix);
   // Optimization - this is not a high use function.
   // Always call - save the code of testing for failure of Write
   spi0_flash_write_disable();
@@ -176,7 +176,7 @@ SpiOpResult spi0_flash_write_status_register_2(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister2Cmd, &status, 8u, 0, prefix);
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister2Cmd, &status, 8u, 0u, prefix);
   spi0_flash_write_disable();
   return ok0;
 }
@@ -188,7 +188,7 @@ SpiOpResult spi0_flash_write_status_register_3(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister3Cmd, &status, 8u, 0, prefix);
+  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister3Cmd, &status, 8u, 0u, prefix);
   spi0_flash_write_disable();
   return ok0;
 }
@@ -214,22 +214,38 @@ SpiOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus);
 // Concerns:
 // * This function requires the Flash Chip to support legacy 16-bit status register writes.
 // * Some Flash Chips only support 8-bit status registry writes (1, 2, 3)
+//   * see spi0_flash_write_status_register(idx, status) for 8-bit writes.
 SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status, const bool non_volatile);
 
+// Use for tightly sending two commands to the Flash. Like an enable instruction
+// followed by the action instruction. No other flash instruction get inserted
+// between them.
+void spi0_flash_command_pair(const uint8_t cmd1, const uint8_t cmd2);
+
+//D #if 0
+//D inline
+//D SpiOpResult spi0_flash_software_reset() {
+//D   // SPI0Command method is not safe. iCache reads could be attempted within
+//D   // the 10us (tRST) required to reliable reset.
+//D   // This should be done out of IRAM with a Cache_Read_Disable_2/
+//D   // Cache_Read_Enable_2 wrapper.
+//D   // TODO move logic to IRAM and feed WDT for 100ms.
+//D   SpiOpResult ok0 = SPI0Command(kResetCmd, NULL, 0u, 0u, kEnableResetCmd);
+//D   ets_delay_us(20u); // needs 10us (tRST)
+//D   // or 40us for GigaDevice or 25ms if erase was running.
+//D   return ok0;
+//D }
+//D #else
 inline
 SpiOpResult spi0_flash_software_reset() {
-  // SPI0Command method is not safe. iCache reads could be attempted within
-  // the 10us (tRST) required to reliable reset.
-  // This should be done out of IRAM with a Cache_Read_Disable_2/
-  // Cache_Read_Enable_2 wrapper.
-  SpiOpResult ok0 = SPI0Command(kResetCmd, NULL, 0, 0, kEnableResetCmd);
-  ets_delay_us(20u); // needs 10us (tRST)
-  return ok0;
+  spi0_flash_command_pair(kEnableResetCmd, kResetCmd);
+  return SPI_RESULT_OK;
 }
+//D #endif
 
 inline
 SpiOpResult spi0_flash_chip_erase() {
-  SpiOpResult ok0 = SPI0Command(kChipEraseCmd, NULL, 0, 0, kWriteEnableCmd);
+  SpiOpResult ok0 = SPI0Command(kChipEraseCmd, NULL, 0u, 0u, kWriteEnableCmd);
   // On success - At return, all is unstable. Running on code cached before the
   // Flash was erased. When that runs out we crash.
   if (SPI_RESULT_OK == ok0) while(true);
@@ -247,17 +263,17 @@ SpiOpResult spi0_flash_read_unique_id(const uint32_t offset, uint32_t *pUnique16
 
 inline
 SpiOpResult spi0_flash_read_unique_id_64(uint32_t *pUnique16B) {
-  return spi0_flash_read_unique_id(0, pUnique16B, 8u);
+  return spi0_flash_read_unique_id(0u, pUnique16B, 8u);
 }
 
 inline
 SpiOpResult spi0_flash_read_unique_id_96(uint32_t *pUnique16B) {
-  return spi0_flash_read_unique_id(0, pUnique16B, 12u);
+  return spi0_flash_read_unique_id(0u, pUnique16B, 12u);
 }
 
 inline
 SpiOpResult spi0_flash_read_unique_id_128(uint32_t *pUnique16B) {
-  return spi0_flash_read_unique_id(0, pUnique16B, 16u);
+  return spi0_flash_read_unique_id(0u, pUnique16B, 16u);
 }
 
 inline
@@ -274,8 +290,8 @@ SpiOpResult spi0_flash_read_secure_register(const uint32_t reg, const uint32_t o
 // Useful when Flash ID is needed before the NONOS_SDK has initialized.
 inline
 uint32_t alt_spi_flash_get_id(void) {
-  uint32_t _id = 0;
-  SpiOpResult ok0 = SPI0Command(kJedecId, &_id, 0, 24u);
+  uint32_t _id = 0u;
+  SpiOpResult ok0 = SPI0Command(kJedecId, &_id, 0u, 24u);
   return (SPI_RESULT_OK == ok0) ? _id : 0xFFFFFFFFu;
 }
 

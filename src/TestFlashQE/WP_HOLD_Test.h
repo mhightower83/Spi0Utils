@@ -14,8 +14,8 @@ extern "C" {
 //   uint32_t qe:1;              // QE bit
 // };
 
-bool test_set_SRP1_SRP0_clear_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile);
-bool test_clear_SRP1_SRP0_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile);
+uint32_t test_set_SRP1_SRP0_clear_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile);
+uint32_t test_clear_SRP1_SRP0_QE(const bool has_8bw_sr2, const bool use_16_bit_sr1, const bool non_volatile);
 uint32_t test_set_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
 bool testFlashWrite(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile);
 bool testOutputGPIO10(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);

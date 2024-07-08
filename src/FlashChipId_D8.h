@@ -92,11 +92,16 @@
  QE is enabled via Write SR2 with 1 data byte with BIT1 set.
  QE is disabled via Write SR2 with 1 data byte with BIT1 cleared.
 
+ xxx_1xxxb: 16th Word 6:0
  Non-Volatile/Volatile SR1 powers-up to last value written to the non-volatile
  SR1. For non-volatile SR1, use instruction 06h to enable write to non-volatile
  status register.
  To enable override with volatile status register after power-up, use
  instruction 50h to enable write before issuing instruction 06h for write SR1.
+
+ x1_xxxxb: 16th Word 13:8
+ Supports software reset instructions. Send two one-byte SPI bus commands, reset
+ enable instruction 66h, and then reset instruction 99h.
 
  The ESP8266 BootROM tries to reprogramme the QE at boot, based on the
  information in the bin header file. This action fails with this device. Leaving

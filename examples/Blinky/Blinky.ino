@@ -68,7 +68,7 @@ void preinit() {
   gpio_9_10_available = reclaim_GPIO_9_10();
   if (gpio_9_10_available) {
     // urgent GPIO pin initialization
-    digitalWrite(9, LOW);
+    digitalWrite(9, LOW);     // Assumes LED is on when set HIGH
     digitalWrite(10, LOW);
     pinMode(9, OUTPUT);
     pinMode(10, OUTPUT);

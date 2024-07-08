@@ -141,10 +141,10 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
   bool success = false;
   /*
   0xCCTTVV = _id = alt_spi_flash_get_id();
-  | | |
-  | | +--- Vendor   - manufacturer ID
-  | +----- Type     - memory type - seems to add some uniqueness
-  +------- Capacity - 2**CC, often correlates to byte capacity TODO: check math -1?
+     | | |
+     | | +--- Vendor   - manufacturer ID
+     | +----- Type     - memory type - seems to add some uniqueness
+     +------- Capacity - 2**(CC - 1), often correlates to byte capacity
 
   A false ID is possible! Be aware of possible collisions. The vendor id is an
   odd parity value. There are a possible 128 manufactures. As of this writing,
@@ -223,15 +223,20 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
       // SFDP Table Ptr: 0x30, Size: 36 Bytes
       if (0x40u == type) {
         // Backup Status Register-3
-        uint32_t status3 = 0;
+        uint32_t status3 = 0u;
         SpiOpResult ok0 = spi0_flash_read_status_register_3(&status3);
-        success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
+        // success = set_S9_QE_bit__8_bit_sr2_write(volatile_bit);
+        success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
         if (SPI_RESULT_OK == ok0) {
-          // Copy Driver Strength value from non-volatile to volatile
-          ok0 = spi0_flash_write_status_register_3(status3, volatile_bit);
-          DBG_SFU_PRINTF("  XMC Anomaly: Copy Driver Strength values to volatile status register.\n");
-          if (SPI_RESULT_OK != ok0) {
-            DBG_SFU_PRINTF("* anomaly handling failed.\n");
+          uint32_t newSR3 = 0u;
+          spi0_flash_read_status_register_3(&newSR3);
+          if (status3 != newSR3) {
+            // Copy Driver Strength value from non-volatile to volatile
+            ok0 = spi0_flash_write_status_register_3(status3, volatile_bit);
+            DBG_SFU_PRINTF("  XMC Anomaly: Copy Driver Strength values to volatile status register.\n");
+            if (SPI_RESULT_OK != ok0) {
+              DBG_SFU_PRINTF("* anomaly handling failed.\n");
+            }
           }
         }
       }

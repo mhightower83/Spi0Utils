@@ -18,19 +18,19 @@ bool spi_flash_vendor_cases(uint32_t device) {
   bool success = false;
 
   if (0x6085 == (device & 0xFFFFu)) {
-    // Logo Puya P25Q80H
+    // Puya logo marked as P25Q80H
     // SFDP Revision: 1.00, 1ST Parameter Table Revision: 1.00
     // SFDP Table Ptr: 0x30, Size: 36 Bytes
     success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
   } else
   if (0x605E == (device & 0xFFFFu)) {
-    // Logo Zbit 25VQ80AT
+    // Zbit logo marked as 25VQ80AT
     // SFDP Revision: 1.06, 1ST Parameter Table Revision: 1.06
     // SFDP Table Ptr: 0x30, Size: 64 Bytes
     success = set_S9_QE_bit__16_bit_sr1_write(volatile_bit);
   } else
   if (0x325E == (device & 0xFFFFu)) {
-    // No logo T25S80 - no matching datasheet
+    // No logo marked as T25S80 - no matching datasheet
     // Junk Flash works only with SPI Flash Mode: "DOUT"
     // No pin functions /WP or /HOLD
     // SFDP none
@@ -39,8 +39,8 @@ bool spi_flash_vendor_cases(uint32_t device) {
 
 #if 1
   // If you have no need for the additional boards supported in
-  // __spi_flash_vendor_cases(device); this block can be omitted this block.
-  // The function will be omiited a link time.
+  // __spi_flash_vendor_cases(device); this block can be omitted.
+  // Then __spi_flash_vendor_cases will be omitted a link time.
   if (! success) {
     // Check builtin support
     success = __spi_flash_vendor_cases(device);

@@ -8,7 +8,7 @@ union SfdpHdr {
     uint32_t signature:32;
     uint32_t rev_minor:8;
     uint32_t rev_major:8;
-    uint32_t num_parm_hdrs:8;
+    uint32_t num_parm_hdrs:8;   // zero-based
     uint32_t access_protocol:8;
   };
   uint32_t u32[2];
@@ -19,7 +19,7 @@ union SfdpParam {
     uint32_t id_lsb:8;
     uint32_t rev_minor:8;
     uint32_t rev_major:8;
-    uint32_t sz_dw:8;
+    uint32_t sz_dw:8;           // 1-based
     uint32_t tbl_ptr:24;
     uint32_t id_msb:8;
   };

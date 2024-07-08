@@ -12,7 +12,7 @@ See [Reclaiming GPIO9 and GPIO10](https://github.com/mhightower83/Arduino-ESP826
 
 For how to use, see [examples](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples#readme).
 
-This library relies on the use of `experimental::SPI0Command;` in Arduino ESP8266 core. I have a fixed PR pending, https://github.com/esp8266/Arduino/pull/9140#issue-2300765579, which is required for this library to work.
+This library makes extensive use of `experimental::SPI0Command` in Arduino ESP8266 core. I have a fixed PR pending, https://github.com/esp8266/Arduino/pull/9140#issue-2300765579, which is required for this library to work.
 
 I use BacktraceLog library in most of my projects and examples.
 If you don't have it installed, just comment out the offending `#include` line.

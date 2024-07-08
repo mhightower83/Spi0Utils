@@ -9,18 +9,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-static uint32_t get_qe_pos() {
-  if (fd_state.S9) return 9u;
-  if (fd_state.S6) return 6u;
-  return 0xFFu;
-}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+#if 0
 void printSR321(const char *indent) {
   using namespace experimental;
 
-  uint32_t status = 0;
+  uint32_t status = 0u;
   SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
   if (SPI_RESULT_OK == ok0) {
     Serial.PRINTF_LN("%sSR321 0x%06X", indent, status);
@@ -37,7 +34,54 @@ void printSR321(const char *indent) {
     Serial.PRINTF_LN("* spi0_flash_read_status_registers_3B() failed!");
   }
 }
+#else
+// void printSR321(const char *indent, const bool always = false);
+void printSR321(const char *indent, const bool always) {
+  using namespace experimental;
 
+  Serial.PRINTF("%sSR321 0x", indent);
+
+  uint32_t sr3 = 0u;
+  SpiOpResult ok0 = SPI_RESULT_ERR;
+  if (always || fd_state.has_8bw_sr3) {
+    ok0 = spi0_flash_read_status_register_3(&sr3);
+  }
+  if (SPI_RESULT_OK == ok0) {
+    Serial.PRINTF("%02X:", sr3);
+  } else {
+    Serial.PRINTF("XX:");
+  }
+
+  uint32_t sr2 = 0u;
+  ok0 = SPI_RESULT_ERR;
+  if (always || fd_state.has_8bw_sr2 || fd_state.has_16bw_sr1) {
+    ok0 = spi0_flash_read_status_register_2(&sr2);
+  }
+  if (SPI_RESULT_OK == ok0) {
+    Serial.PRINTF("%02X:", sr2);
+  } else {
+    Serial.PRINTF("XX:");
+  }
+
+  uint32_t sr1 = 0u;
+  ok0 = spi0_flash_read_status_register_1(&sr1);
+  if (SPI_RESULT_OK == ok0) {
+    Serial.PRINTF_LN("%02X", sr1);
+  } else {
+    Serial.PRINTF_LN("XX");
+  }
+
+  if (kWELBit  == (kWELBit & sr1)) Serial.PRINTF_LN("%s  WEL=1", indent);
+  if (fd_state.S9) {
+    if (kQES9Bit1B == (kQES9Bit1B & sr1)) Serial.PRINTF_LN("%s  QE/S9=1", indent);
+    if (BIT7 == (BIT7 & sr1)) Serial.PRINTF_LN("%s  SRP0=1", indent);
+    if (BIT0 == (BIT0 & sr2)) Serial.PRINTF_LN("%s  SRP1=1", indent);
+  } else
+  if (fd_state.S6) {
+    if (kQES6Bit == (kQES6Bit & sr1)) Serial.PRINTF_LN("%s  QE/S6=1", indent);
+  }
+}
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 // WEL is an essential feature for our tests.
 // Confirm that the SPI Flash Status Register supports a WEL (Write-Enable-Latch) bit
@@ -124,35 +168,65 @@ bool test_sr1_16_bit_write() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Clear Status Register bits in register 1 and 2
+// Assume both registers are present
+//
 // prerequisites
 //   fd_state.has_8bw_sr2
 //   fd_state.has_16bw_sr1
 //
+// returns true on success
+#if 0
 bool clearSR21(bool _non_volatile) {
   using namespace experimental;
   SpiOpResult ok0;
 
   if (fd_state.has_16bw_sr1) {
-    ok0 = spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 16u);
+    ok0 = spi0_flash_write_status_register(/* SR1 */ 0u, 0u, _non_volatile, 16u);
     CHECK_OK0(ok0);
   } else {
-    ok0 = spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 8u);
+    ok0 = spi0_flash_write_status_register(/* SR1 */ 0u, 0u, _non_volatile, 8u);
     CHECK_OK0(ok0);
     if (fd_state.has_8bw_sr2) {
-      ok0 = spi0_flash_write_status_register(/* SR2 */ 1u, 0, _non_volatile, 8u);
+      ok0 = spi0_flash_write_status_register(/* SR2 */ 1u, 0u, _non_volatile, 8u);
       CHECK_OK0(ok0);
       // I don't know that I need this. I sleep better with it. The concern is
       // all the Flash chips have different bits doing different things some
       // block register writes. If write block bits are split across register 1
       // and 2 then there may be a specific order needed. And, there are too
       // many data sheets for me to read.
-      ok0 = spi0_flash_write_status_register(/* SR1 */ 0, 0, _non_volatile, 8u);
+      ok0 = spi0_flash_write_status_register(/* SR1 */ 0u, 0u, _non_volatile, 8u);
       CHECK_OK0(ok0);
     }
   }
-  return true;
+  uint32_t sr1 = 0u, sr2 = 0u;
+  ok0 = spi0_flash_read_status_register(0u, &sr1);
+  CHECK_OK0(ok0);
+  if (0 == (sr1 & 0xFCu)) {
+    if (! fd_state.has_8bw_sr2) return true;
+    ok0 = spi0_flash_read_status_register(1, &sr2);
+    CHECK_OK0(ok0);
+    if (SPI_RESULT_OK == ok0 && 0 == sr2) {
+      return true;
+    }
+  }
+  Serial.PRINTF_LN("* %s: Stuck bits in Status Registers 2 and 1, 0x%04X", __func__, (sr2 << 8u) | sr1);
+  return false;
 }
 
+#else
+static bool clearSR21(bool _non_volatile) {
+  using namespace experimental;
+
+  Serial.PRINTF_LN("  Clear Status Registers 1 and 2");
+  uint32_t sr21 = test_clear_SRP1_SRP0_QE(fd_state.has_8bw_sr2, fd_state.has_16bw_sr1, _non_volatile);
+  if (sr21) {
+    Serial.PRINTF_LN("* %s: Stuck bits in Status Registers 2 and 1, 0x%04X", __func__, sr21);
+  }
+
+  return (0 == sr21);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Generalized Flash Status Register modify bit n function
@@ -179,8 +253,7 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile) 
 
   uint32_t _bit = 1u << bit_pos;
 
-  uint32_t sr2 = 0;
-  uint32_t sr21 = 0;
+  uint32_t sr21 = 0u, sr2 = 0u;
   ok0 = spi0_flash_read_status_register_1(&sr21);
   CHECK_OK0(ok0);
   if (fd_state.has_8bw_sr2 || fd_state.has_16bw_sr1) {
@@ -202,11 +275,11 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile) 
   }
 
   if (fd_state.has_16bw_sr1) {
-    ok0 = spi0_flash_write_status_register(/* SR1 */ 0, sr21, _non_volatile, 16u);
+    ok0 = spi0_flash_write_status_register(/* SR1 */ 0u, sr21, _non_volatile, 16u);
     CHECK_OK0(ok0);
   } else {
     if (8u > bit_pos) {
-      ok0 = spi0_flash_write_status_register(/* SR1 */ 0, sr21 & 0xFFu, _non_volatile, 8u);
+      ok0 = spi0_flash_write_status_register(/* SR1 */ 0u, sr21 & 0xFFu, _non_volatile, 8u);
       CHECK_OK0(ok0);
     } else {
       ok0 = spi0_flash_write_status_register(/* SR2 */ 1u, sr21 >> 8u, _non_volatile, 8u);
@@ -214,8 +287,7 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile) 
     }
   }
 
-  uint32_t verify_sr2 = 0;
-  uint32_t verify_sr21 = 0;
+  uint32_t verify_sr21 = 0u, verify_sr2 = 0u;
   ok0 = spi0_flash_read_status_register_1(&verify_sr21);
   CHECK_OK0(ok0);
   if (fd_state.has_8bw_sr2 || fd_state.has_16bw_sr1) {
@@ -233,6 +305,10 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile) 
 // Test if proposed QE bit is writable
 // If QE/S9 fails to write switch to QE/S6
 //
+// Here SFDP would have been useful if any of the ESP8266 modules I tested had
+// support for JEDEC 1.06. Everything I saw was too old or broken (0xD8).
+// DWORD 15 and 16 are the interesting bits; however, most of the flashes I see
+// only have 9 DWORD.
 bool analyze_write_QE(bool _non_volatile) {
   using namespace experimental;
   bool pass = false;
@@ -240,17 +316,17 @@ bool analyze_write_QE(bool _non_volatile) {
   const char *str_kind = (_non_volatile) ? "non-" : "";
 
   if (0xFFu == qe_num) {
-    Serial.PRINTF_LN("\nanalyze_write_QE: Testing for QE/S? - No QE bit selected, S9 or S6.");
+    Serial.PRINTF_LN("\n%s: Testing for QE/S? - No QE bit selected, S9 or S6.", __func__);
     return pass;
   }
 
-  Serial.PRINTF_LN("\nanalyze_write_QE: Testing for QE/S%X Status Register write support", qe_num);
+  Serial.PRINTF_LN("\n%s: Testing for QE/S%X Status Register write support", __func__, qe_num);
   // set and clear QE
   int res = modifyBitSR(qe_num, 1u, _non_volatile);
   if (0 <= res) {
     // It is okay if already set, we will learn if Status Register Writes are
     // allowed when we clear.
-    res = modifyBitSR(qe_num, 0, _non_volatile);
+    res = modifyBitSR(qe_num, 0u, _non_volatile);
     if (1 == res) {
       pass = true;
       Serial.PRINTF_LN("  %svolatile supported", str_kind);
@@ -266,14 +342,14 @@ bool analyze_write_QE(bool _non_volatile) {
 
 bool analyze_SR_BP0(const bool _non_volatile) {
   using namespace experimental;
-  Serial.PRINTF_LN("\nanalyze_SR_BP0: Testing for writable %svolatile Status Register using BP0", (_non_volatile) ? "non-" : "");
+  Serial.PRINTF_LN("\n%s: Testing for writable %svolatile Status Register using BP0", __func__, (_non_volatile) ? "non-" : "");
 
   // set and clear BP0
   int res = modifyBitSR(/* BP0 */2u, 1u, _non_volatile);
   if (0 <= res) {
     // It is okay if already set, we will learn if Status Register Writes are
     // allowed when we clear.
-    res = modifyBitSR(/* BP0 */2u, 0, _non_volatile);
+    res = modifyBitSR(/* BP0 */2u, 0u, _non_volatile);
     if (1 == res) {
       Serial.PRINTF_LN("  supported");
       return true;
@@ -301,11 +377,16 @@ bool analyze_SR_BP0(const bool _non_volatile) {
     * These parts require a unique read and write instruction 3Fh/3Eh for SR2.
     * I don't find any support for these in esptool.py
 */
-bool analyze_SR_QE(const uint32_t hint) {
+bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
   using namespace experimental;
 
   // Reset Flash Discovery states
   resetFlashDiscovery();
+  Serial.PRINTF_LN("\n%s: Analyze Flash and discover characteristics, hint: '%u', safety: %s.",
+    __func__, hint, (saferMode) ? "on" : "off");
+
+  fd_state.device = printFlashChipID("  ");
+  printSR321("  ", true);
 
   // Take control of GPIO10/"/WP" and force high so SR writes are not protected.
   digitalWrite(10u, HIGH);
@@ -313,7 +394,7 @@ bool analyze_SR_QE(const uint32_t hint) {
 
   // This should not be necessary; however, our analysis depends on WEL working
   // a certain way. This confirms the Flash works and our thinking.
-  Serial.PRINTF_LN("\nanalyze_SR_QE: Check Flash support for the Write-Enable-Latch instructions, Enable 06h and Disable 04h");
+  Serial.PRINTF_LN("\n%s: Check Flash support for the Write-Enable-Latch instructions, Enable 06h and Disable 04h", __func__);
   if (confirmWelBit()) {
     Serial.PRINTF_LN("  supported");
   } else {
@@ -321,42 +402,50 @@ bool analyze_SR_QE(const uint32_t hint) {
     return false;
   }
 
-  Serial.PRINTF_LN("\nanalyze_SR_QE: Testing Status Register writes:");
+  Serial.PRINTF_LN("\n%s: Testing Status Register writes:", __func__);
   bool sr1_8  = test_sr_8_bit_write(0);
   bool sr2_8  = test_sr_8_bit_write(1u);
   bool sr3_8  = test_sr_8_bit_write(2u);
   bool sr1_16 = test_sr1_16_bit_write();
   spi0_flash_write_disable(); // WEL Cleanup
 
-  fd_state.device = printFlashChipID("  ");
 
   if (sr1_8) fd_state.has_8bw_sr1 = true;
   if (sr2_8) fd_state.has_8bw_sr2 = true;
+  if (sr3_8) fd_state.has_8bw_sr3 = true;
   if (sr1_16) fd_state.has_16bw_sr1 = true;
+  printSR321("  ");
 
   // determine if the QE bit can be written.
   // determine if we have volatile bits
   // can we modify non-volatile BP0 in Status Register-1?
   // can we modify volatile BP0 in Status Register-1?
   // Clearing all bits should be safe. Setting is when we can get into trouble
-  clearSR21(non_volatile_bit);
-  fd_state.has_volatile = analyze_SR_BP0(volatile_bit);
-  #if ! BUILD_OPTION_FLASH_SAFETY_OFF
-  // With non-volatile, it is easy to brick a module vs with volatile it can be
-  // restored by powering off/on.
-  if (! fd_state.has_volatile) {
-    Serial.PRINTF("\n"
-    "* Built with safety on default.\n"
-    "  To turn off use '-DBUILD_OPTION_FLASH_SAFETY_OFF=1'. Without volatile\n"
-    "  Status Register bits, it is possible that proceeding with more test could\n"
-    "  brick the Flash.\n");
+  if (! clearSR21(non_volatile_bit)) {
+    Serial.PRINTF_LN("* possible OTP issue - analyze aborted");
     return false;
   }
-  #endif
+  printSR321("  ");
+
+  fd_state.has_volatile = analyze_SR_BP0(volatile_bit);
+  printSR321("  ");
+  if (saferMode) {
+    // With non-volatile, it is easy to brick a module vs with volatile it can be
+    // restored by powering off/on.
+    if (! fd_state.has_volatile) {
+      Serial.PRINTF("\n"
+        "* The safety is on.\n"
+        "* No volatile Status Register bits were detected. Without volatile Status Register\n"
+        "* bits, continuing with more tests could brick the Flash. To analyze without\n"
+        "* safety, use the capitalized hotkeys 'A' or 'B'.\n"
+        "* For example to rerun with \"hint S6\" enter hostkeys: Bwhp\n");
+      return false;
+    }
+  }
   clearSR21(non_volatile_bit);
   fd_state.write_QE = analyze_SR_BP0(non_volatile_bit);
 
-  Serial.PRINTF_LN("\nanalyze_SR_QE: Flash Info Summary:");
+  Serial.PRINTF_LN("\n%s: Flash Info Summary:", __func__);
   if (sr1_8 || sr2_8 || sr3_8) {
     Serial.PRINTF("  Support for 8-bit Status Registers writes:");
     if (sr1_8) Serial.PRINTF(" SR1");
@@ -364,7 +453,8 @@ bool analyze_SR_QE(const uint32_t hint) {
     if (sr3_8) Serial.PRINTF(" SR3");
     Serial.PRINTF_LN();
   } else {
-    Serial.PRINTF_LN("  No Flash Status Registers discovered!??");
+    // This should never be
+    Serial.PRINTF_LN("  No Flash Status Registers discovered!?");
     return false;
   }
 
@@ -372,25 +462,24 @@ bool analyze_SR_QE(const uint32_t hint) {
     // TODO S9 failed should we try with S6??
     // TODO check and report if possible OTP has been issued - might test at
     // the beginning and avoid confusion of when it happened.
-    // Also may make sense to take control of pin 10 and force HIGH to enable
-    // writes.
+    // If we cannot clear status register at the start OTP may be at play.
     Serial.PRINTF_LN("  Status Register-1 does not appear to support writes.");
     return false;
   }
 
   if (6u == hint) {
-    Serial.PRINTF_LN("  Using hint, suggests Status Register-1 support QE/S6 (WPdis) BIT6");  //*
+    Serial.PRINTF_LN("  Using hint, QE bit BIT6/S6 (WPdis) with 8-bit Write Status Register-1");  //*
     fd_state.S6 = true;
   } else
   if (sr1_16) {
-    fd_state.S9 = true; // maybe
     Serial.PRINTF_LN("  May support QE bit at BIT9/S9 with 16-bit Write Status Register-1"); //*
+    fd_state.S9 = true; // maybe
     if (sr2_8) {
       Serial.PRINTF_LN("    or as 8-bit Write Status Register-2 BIT1");
     }
   } else
   if (sr2_8) {
-    Serial.PRINTF_LN("  May support QE bit at S9 with 8-bit Write Status Register-2 BIT1"); //*
+    Serial.PRINTF_LN("  May support QE bit at BIT9/S9 with 8-bit Write Status Register-2 BIT1"); //*
     fd_state.S9 = true;
   } else {
     Serial.PRINTF_LN("  No Status Register-2 present");
@@ -449,9 +538,11 @@ bool check_QE_WP_SxFF() {
   bool _non_volatile = (fd_state.has_volatile) ? volatile_bit : non_volatile_bit;
 
   // Clear Status Register-1 aka SR1
-  test_clear_SRP1_SRP0_QE(0xFFu, fd_state.has_16bw_sr1, _non_volatile);
-  bool pass1 = testOutputGPIO10(0xFFu, fd_state.has_16bw_sr1, _non_volatile, true /* use asis QE=0 */);
+  if (! clearSR21(_non_volatile)) {
+    return false;
+  }
 
+  bool pass1 = testOutputGPIO10(0xFFu, fd_state.has_16bw_sr1, _non_volatile, true /* use asis QE=0 */);
   if (pass1) {
     /* success with QE/S6= 0 or 1 */
     fd_state.WP = false;
@@ -475,11 +566,12 @@ bool check_QE_WP_S6() {
   bool _non_volatile = (fd_state.has_volatile) ? volatile_bit : non_volatile_bit;
 
   // Clear Status Register-1 aka SR1
-  // spi0_flash_write_status_register(/* SR1 */ 0, /* value */ 0, _non_volatile, 8u);
-  test_clear_SRP1_SRP0_QE(6u, fd_state.has_16bw_sr1, _non_volatile);
+  if (! clearSR21(_non_volatile)) {
+    return false;
+  }
+
   bool pass1 = testOutputGPIO10(6u, fd_state.has_16bw_sr1, _non_volatile, true /* use asis QE=0 */);
   bool pass2 = testOutputGPIO10(6u, fd_state.has_16bw_sr1, _non_volatile, false /* set QE=1 */);
-
   if (pass1 && pass2) {
     /* success with QE/S6= 0 or 1 */
     fd_state.WP = false;
@@ -511,16 +603,23 @@ bool check_QE_WP_S9() {
   // Move this to a function to call
   bool _non_volatile = (fd_state.has_volatile) ? volatile_bit : non_volatile_bit;
 
-  Serial.PRINTF_LN("  Set context SRP1:SRP0 0:1");
-  test_set_SRP1_SRP0_clear_QE(9u, fd_state.has_16bw_sr1, _non_volatile);
-  printSR321("  ");
+  Serial.PRINTF_LN("  Set context SRP1:SRP0 0:1 and clear all others");
+  uint32_t stuckMask = test_set_SRP1_SRP0_clear_QE(9u, fd_state.has_16bw_sr1, _non_volatile);
+  if (stuckMask) {
+      if (~0u == stuckMask) {
+        Serial.PRINTF_LN("*   failed, bit SRP0/BIT7 failed to set");
+      } else {
+        Serial.PRINTF_LN("*   failed, stuck bit mask 0x%04X", stuckMask);
+      }
+      return false;
+  }
 
   bool pass_SRP01_QE0 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, true  /* use QE=0 */);
   bool pass_SRP01_QE1 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, false /* set QE=1 */);
 
-  Serial.PRINTF_LN("  Clear context SRP1:SRP0 0:0");
-  test_clear_SRP1_SRP0_QE(9u, fd_state.has_16bw_sr1, _non_volatile);
-  printSR321("  ");
+  if (! clearSR21(_non_volatile)) {
+    return false;
+  }
 
   bool pass_SRP00_QE0 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, true  /* use QE=0 */);
   bool pass_SRP00_QE1 = testOutputGPIO10(9u, fd_state.has_16bw_sr1, _non_volatile, false /* set QE=1 */);
@@ -555,9 +654,7 @@ bool check_QE_WP_S9() {
   } else {
     /* no resolution found */
     Serial.PRINTF_LN("* No conclusion on how to disable pin function /WP using SRP1:SRP0 and QE/S9");
-    Serial.PRINTF_LN("  Clear context SRP1:SRP0 0:0 and QE=0");
-    test_clear_SRP1_SRP0_QE(9u, fd_state.has_16bw_sr1, volatile_bit);
-    printSR321("  ");
+    clearSR21(_non_volatile);
   }
 
   // With success on the last test, we return with the Status Register ready for
@@ -582,6 +679,7 @@ bool check_QE_WP() {
   //
   bool pass = false;
 
+  Serial.PRINTF_LN("\nBegin QE /WP pin tests set:");
   if (fd_state.S9) {
     pass = check_QE_WP_S9();
   } else
@@ -591,6 +689,7 @@ bool check_QE_WP() {
     // Maybe there is no pin function /WP
     pass = check_QE_WP_SxFF();
   }
+  Serial.PRINTF_LN("\nEnd QE /WP pin tests: %s", (pass) ? "passed" : "failed!");
 
   return pass;
 }
@@ -605,18 +704,24 @@ bool processKey(const int key) {
 
   switch (key) {
     case '3':
-      printSR321();
+      printSR321("\n", true);
       break;
 
-    case 'a':
-      pass = analyze_SR_QE(8u);  // hint QE/S9
+    case 'r':
+      runScript('a');
+      break;
+
+    case 'a':   // Safer
+    case 'A':   // more risk uses non-volatile Status Register
+      pass = analyze_SR_QE(8u, ('a' == key));  // hint QE/S9
       if (!scripting && pass) {
         Serial.PRINTF_LN("\nTo continue verification, run /WP test, menu 'w'");
       }
       break;
 
-    case 'A':
-      pass = analyze_SR_QE(6u);  // hint QE/S6
+    case 'b':   // Safer
+    case 'B':   // more risk uses non-volatile Status Register
+      pass = analyze_SR_QE(6u, ('b' == key));  // hint QE/S6
       if (!scripting && pass) {
         Serial.PRINTF_LN("\nTo continue verification, run /WP test, menu 'w'");
       }
@@ -713,14 +818,14 @@ bool processKey(const int key) {
           Serial.PRINTF_LN("%s\n* the volatile Status Register option is not available.", "Update QE");
           break;
         }
-        uint32_t status = 0;
+        uint32_t status = 0u;
         SpiOpResult ok0 = spi0_flash_read_status_registers_3B(&status);
         if (SPI_RESULT_OK != ok0) {
           Serial.PRINTF_LN("%s\n* SR321 read operation failed!", "Update QE");
           break;
         }
         bool set_QE = ('Q' == key) || ('E' == key);
-        Serial.PRINTF_LN("%s=%u bit in %svolatile flash status register, SR321 0x%06X", "Update QE", (set_QE) ? 1u : 0, (_non_volatile) ? "non-" : "", status);
+        Serial.PRINTF_LN("%s=%u bit in %svolatile flash status register, SR321 0x%06X", "Update QE", (set_QE) ? 1u : 0u, (_non_volatile) ? "non-" : "", status);
 
         pass = false;
         if (set_QE) {
@@ -757,8 +862,9 @@ bool processKey(const int key) {
       break;
 
     case 'R':
-      Serial.PRINTF_LN("Restart ...");
-      test_clear_SRP1_SRP0_QE(get_qe_pos(), fd_state.has_16bw_sr1, volatile_bit);
+      Serial.PRINTF_LN("\nRestart ...");
+      //D test_clear_SRP1_SRP0_QE(fd_state.has_8bw_sr2, fd_state.has_16bw_sr1, volatile_bit);
+      clearSR21(non_volatile_bit);
       Serial.flush();
       ESP.restart();
       break;
@@ -768,7 +874,7 @@ bool processKey(const int key) {
         Serial.PRINTF_LN("\nFlash write disable:");
         SpiOpResult ok0 = spi0_flash_write_disable();
         Serial.PRINTF_LN("%c %s\n", (SPI_RESULT_OK == ok0) ? ' ' : '*', (SPI_RESULT_OK == ok0) ? "success" : "failed!");
-        uint32_t status = 0;
+        uint32_t status = 0u;
         ok0 = spi0_flash_read_status_registers_3B(&status);
         if (SPI_RESULT_OK == ok0) {
           Serial.PRINTF_LN("%c SR321 0x%06X", (status & kWELBit) ? '*' : ' ', status);
@@ -781,37 +887,36 @@ bool processKey(const int key) {
     //
     case 'S':
       // Force clear /WP
-      pinMode(10, OUTPUT);
-      digitalWrite(10, HIGH);
-      Serial.PRINTF_LN("\nSPI Flash Software Reset (66h, 99h):");
-      if (SPI_RESULT_OK == spi0_flash_software_reset()) {
-        auto ok0 = spi0_flash_write_status_register_2(0x00u, true);
-        if (SPI_RESULT_OK == ok0) {
-          Serial.PRINTF_LN("  Success");
-        } else {
-          Serial.PRINTF_LN("  Failed");
-        }
-      } else {
-        Serial.PRINTF_LN("  Failed");
-      }
+      pinMode(10u, OUTPUT);
+      digitalWrite(10u, HIGH);
+      Serial.PRINTF_LN("\nStart SPI Flash Software Reset (66h, 99h):");
+      spi0_flash_software_reset();
+      printSR321("  ", true);
       break;
 
     case 'z':
-      runScript('a');
+      {
+        Serial.PRINTF_LN("\nRunning buildin '__spi_flash_vendor_cases()' function");
+        uint32_t device = fd_state.device & 0xFFFFFFu;
+        bool builtin = __spi_flash_vendor_cases(device);
+        Serial.PRINTF_LN("  Device/Vendor: 0x%06X %ssupported", device, (builtin) ? "" : "not ");
+        printSR321("  ", true);
+      }
       break;
 
     case '?':
       Serial.PRINTF_LN("\r\nHot key help:");
       Serial.PRINTF_LN("\nAnalyze:");
-      Serial.PRINTF_LN("  3 - SPI Flash Read Status Registers, 3 Bytes");
+      Serial.PRINTF_LN("  r - Run analyze script includes tests");
       Serial.PRINTF_LN("  a - Analyze Status Register Writes remembers discovered results. leans toward QE/S9");
-      Serial.PRINTF_LN("  A - Analyze Status Register Writes remembers discovered results, uses hint QE/S6");
+      Serial.PRINTF_LN("  b - Analyze Status Register Writes remembers discovered results, uses hint QE/S6");
+      Serial.PRINTF_LN("  A - Same as 'a' except less safe uses non-volatile Status Registers");
+      Serial.PRINTF_LN("  B - Same as 'b' except less safe uses non-volatile Status Registers");
       Serial.PRINTF_LN("  f - Print SFDP Data");
-      Serial.PRINTF_LN("  r - Run analyze script");
       Serial.PRINTF_LN();
       Serial.PRINTF_LN("Tests:");
-      Serial.PRINTF_LN("  h - Test /HOLD digitalWrite( 9, LOW)");
       Serial.PRINTF_LN("  w - Test /WP   digitalWrite(10, LOW) and write to Flash");
+      Serial.PRINTF_LN("  h - Test /HOLD digitalWrite( 9, LOW)");
       Serial.PRINTF_LN("  p - Print 'spi_flash_vendor_cases()' example function");
       Serial.PRINTF_LN();
       Serial.PRINTF_LN("Manual set/clear discovery flags:");
@@ -835,6 +940,7 @@ bool processKey(const int key) {
 
       Serial.PRINTF_LN();
       Serial.PRINTF_LN("Misc.");
+      Serial.PRINTF_LN("  3 - SPI Flash Read Status Registers, 3 Bytes");
       Serial.PRINTF_LN("  d - Clear WEL bit, write enable");
       Serial.PRINTF_LN("  S - SPI Flash - Software Reset 66h, 99h");
       Serial.PRINTF_LN("  R - Restart");

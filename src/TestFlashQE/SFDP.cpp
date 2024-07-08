@@ -61,7 +61,7 @@ void printSfdpReport() {
       uint32_t signature:32;
       uint32_t rev_minor:8;
       uint32_t rev_major:8;
-      uint32_t num_parm_hdrs:8;
+      uint32_t num_parm_hdrs:8;     // zero based
       uint32_t access_protocol:8;
     };
     uint32_t u32[2];
@@ -72,7 +72,7 @@ void printSfdpReport() {
       uint32_t id_lsb:8;
       uint32_t rev_minor:8;
       uint32_t rev_major:8;
-      uint32_t num_dw:8;
+      uint32_t num_dw:8;          // 1-based
       uint32_t tbl_ptr:24;
       uint32_t id_msb:8;
     };
@@ -103,14 +103,22 @@ void printSfdpReport() {
   [[maybe_unused]]
   union SFDP_Basic_15 {
     struct {
+      // 15th DWORD - page 40
       uint32_t ignore:20;
       uint32_t qe:3;            // QE Quad Enable support - 0 = no QE support, 1-6 many variations
       uint32_t hold_disable:1;  // Hold/Reset function disable feature available in Extended Status Register
-      uint32_t reserved:8;
-      uint32_t ignore3:32;
+      uint32_t reserved2:8;
+      // 16th DWORD - page 42
+      uint32_t non_volatile:7;
+      uint32_t reserved:1;
+      uint32_t soft_reset:6;
+      uint32_t exit_4b_addr:10;
+      uint32_t enter_4b_addr:8;
     };
     uint32_t u32[2];
   } basic_param_15;
+
+  constexpr uint32_t kSfdpSignature = 0x50444653u; //'SFDP'
 
   SpiOpResult ok0;
 
@@ -118,7 +126,7 @@ void printSfdpReport() {
   size_t addr = 0u;
 
   ok0 = spi0_flash_read_sfdp(addr, &sfdp_hdr.u32[0], sz);
-  if (SPI_RESULT_OK == ok0 && 0x50444653 == sfdp_hdr.signature) {
+  if (SPI_RESULT_OK == ok0 && kSfdpSignature == sfdp_hdr.signature) {
     ETS_PRINTF("SFDP Header\n");
     ETS_PRINTF("  %-18s 0x%08X\n", "SFDP Signature", sfdp_hdr.signature);
     ETS_PRINTF("  %-18s %u.%u\n", "Revision", sfdp_hdr.rev_major, sfdp_hdr.rev_minor);
@@ -161,7 +169,7 @@ void printSfdpReport() {
   ETS_PRINTF("\nRaw dump of SFDP");
   uint32_t param[4];
   ok0 = spi0_flash_read_sfdp(0, param, sizeof(param));
-  if (SPI_RESULT_OK == ok0 && 0x50444653 == param[0]) { //'SFDP' = 50444653h
+  if (SPI_RESULT_OK == ok0 && kSfdpSignature == param[0]) { //'SFDP' = 50444653h
     // const char *intro = "SFDP:";
     for (size_t j = 0; ; ) {
       // ETS_PRINTF("\n  %-9s  0x%02X  ", intro, 0x10 * j);
