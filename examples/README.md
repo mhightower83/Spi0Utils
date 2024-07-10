@@ -55,34 +55,7 @@ Reference:
 ```
 
 
-
 ## [d-a-v's EPS8266 pinout (Updated)](https://mhightower83.github.io/esp8266/pinout.html)
-
-
-## [CompatibleQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/CompatibleQE)
-
-**Plan to remove**
-
-For ESP8266EX modules with QE-compatible Flash memory, this example should work.
-Compatible Flash memory would be like BergMicro, Winbond, XMC, or others that have the QE bit at S9 in the Flash Status Register and support 16-bit Write Status Register-1.
-
-Other flash memory may require more effort. However, this starts us off with a simple example to introduce the things to looking for.
-
-TODO: I am not sure this example is needed? It is at a lower level.
-Maybe the Outline example is enough?
-
-
-
-## [ExploreQE](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/ExploreQE)
-
-**Plan to remove**
-
-This is a more detailed example intended for poking around.
-It has a menu of options for analyzing and testing various SPI Flash memory.
-
-I think this example needs more work? It still feels a bit complicated to drive.
-
-
 
 ## [Streaker](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Streaker)
 
