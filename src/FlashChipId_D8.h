@@ -51,8 +51,8 @@
  SFDP:     0x30    0xFFF120E5 0x01FFFFFF 0x6B08EB44 0xBB423B08
  SFDP:     0x40    0xFFFFFFEE 0xFF00FFFF 0xFF00FFFF 0x520F200C
  SFDP:     0x50    0xFF00D810                                   GD25Q32C only has 9 entries and these match
-           0x54               0xFEBD4A24 0x42152782 0x331662EC  GD25Q32E has 16 entries
- SFDP:     0x60    0x757A757A 0x5CD5B304 0x00640600 0x00001008
+           0x54               0xFEBD4A24 0x42152782 0x331662EC
+ SFDP:     0x60    0x757A757A 0x5CD5B304 0x00640600 0x00001008  GD25Q32E has 16 entries
  ...
  SFDP:     0x90    0x27003600 0x6477F99E 0xFFFFCBFC 0xFFFFFFFF
       3.6 Volts MAX
@@ -82,9 +82,10 @@
 
  Consult JESD216F-02.pdf for SFDP details:
 
- 15th DWORD 22:20 - param data not on the CD25Q32C; however, it is on the CD25Q32E.
+ 15th DWORD param data not present on CD25Q32C; however, it is on the CD25Q32E.
 
- 110b: QE is BIT1 of the SR2.
+ 110b: 15th DWORD 22:20
+ QE is BIT1 of the SR2.
  Read 1 data byte from SR1 with Read Status instruction 05h.
  Read 1 data byte from SR2 with Read Status instruction 35h,
  Read 1 data byte from SR3 with Read Status instruction 15h.
@@ -92,14 +93,14 @@
  QE is enabled via Write SR2 with 1 data byte with BIT1 set.
  QE is disabled via Write SR2 with 1 data byte with BIT1 cleared.
 
- xxx_1xxxb: 16th Word 6:0
+ xxx_1xxxb: 16th DWORD 6:0
  Non-Volatile/Volatile SR1 powers-up to last value written to the non-volatile
  SR1. For non-volatile SR1, use instruction 06h to enable write to non-volatile
  status register.
  To enable override with volatile status register after power-up, use
  instruction 50h to enable write before issuing instruction 06h for write SR1.
 
- x1_xxxxb: 16th Word 13:8
+ x1_xxxxb: 16th DWORD 13:8
  Supports software reset instructions. Send two one-byte SPI bus commands, reset
  enable instruction 66h, and then reset instruction 99h.
 

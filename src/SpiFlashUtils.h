@@ -24,9 +24,9 @@ extern SpiFlashOpResult spi_flash_read_status(uint32_t *status); // NONOS_SDK
 
 namespace experimental {
 
-enum SpiFlashStatusRegister {
-    non_volatile_bit = true,
-    volatile_bit = false
+enum {
+  non_volatile_bit = true,
+  volatile_bit = false
 };
 
 //

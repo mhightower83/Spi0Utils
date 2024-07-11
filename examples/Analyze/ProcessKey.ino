@@ -307,8 +307,8 @@ int modifyBitSR(const uint32_t bit_pos, uint32_t val, const bool _non_volatile) 
 //
 // Here SFDP would have been useful if any of the ESP8266 modules I tested had
 // support for JEDEC 1.06. Everything I saw was too old or broken (0xD8).
-// DWORD 15 and 16 are the interesting bits; however, most of the flashes I see
-// only have 9 DWORD.
+// DWORD 15 and 16 are the interesting ones; however, most of the flashes I see
+// only have 9 DWORD. Leave the deeper dive into SFDP for a later revision.
 bool analyze_write_QE(bool _non_volatile) {
   using namespace experimental;
   bool pass = false;

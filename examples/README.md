@@ -1,4 +1,4 @@
-# Directory Listing for Example
+# Directory Listing for Examples
 
 For compatible SPI Flash memory, the SPI Flash can be set up to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules, NodeMCU DEV boards, and other modules that expose those pins.
 
@@ -21,11 +21,11 @@ The hope is this will handle a large percentage of the modules exposing GPIO9 an
 
 ## [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom)
 
-Similar to "Outline" above. Illustrates adding support for an additional Flash part. Provides a hypothetical custom handler in `CustomeVendor.ino` for `spi_flash_vendor_cases()`.
+Similar to "Outline" above. Illustrates adding support for an additional Flash part. Provides a hypothetical custom handler in `CustomVendor.ino` for `spi_flash_vendor_cases()`.
 
 ## [OutlineXMC](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineXMC)
 
-Similar to "OutlineCustom" above. Illustrates the use of SFDP data for tailoring Flash initialization for each revision of the part. Provides a hypothetical custom handler in `CustomeXMC.ino` for `spi_flash_vendor_cases()`.
+Similar to "OutlineCustom" above. Illustrates the use of SFDP data for tailoring Flash initialization for each revision of the part. Provides a hypothetical custom handler in `CustomXMC.ino` for `spi_flash_vendor_cases()`.
 
 ## [Blinky](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Blinky)
 
@@ -56,16 +56,3 @@ Reference:
 
 
 ## [d-a-v's EPS8266 pinout (Updated)](https://mhightower83.github.io/esp8266/pinout.html)
-
-## [Streaker](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Streaker)
-
-**Plan to remove**
-
-This probably doesn't belong here; however, It needs a home for archiving purposes.
-
-Uses a kludged together non-OS wrapper for running some code with the bare necessities.
-This is not a true Arduino Sketch. It is closer to a low-level ESP8266 program running with some code fragments from the BootROM, NONOS SDK, and Arduino ESP8266.
-Use build option `MMU:"16K Cache + 48K IRAM"`
-
-This unorthodox Sketch generates low jitter signals for viewing on an oscilloscope.
-Specifically for viewing the ringing, rise, and fall times of GPIO pins.
