@@ -5,23 +5,28 @@
 extern "C" {
 #endif
 
-// struct OutputTestResult {
-//   uint32_t qe_bit:8;          // 0xFF uninitialized, 7 for S7 and 9 for S9
-//   uint32_t srp0:1;            // BIT7 of SR321
-//   uint32_t srp1:1;            // BIT8 of SR321
-//   uint32_t low:1;             // pass/fail results for GPIO10 LOW
-//   uint32_t high:1;            // pass/fail results for GPIO10 HIGH
-//   uint32_t qe:1;              // QE bit
-// };
+// Used for QE/S9 only
+uint32_t test_set_SRP1_SRP0_clear_QE(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile);
 
-uint32_t test_set_SRP1_SRP0_clear_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile);
+// General clear SR2 and SR1 with success verified.
 uint32_t test_clear_SRP1_SRP0_QE(const bool has_8bw_sr2, const bool use_16_bit_sr1, const bool non_volatile);
-uint32_t test_set_QE(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
-bool testFlashWrite(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile);
-bool testOutputGPIO10(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
-bool testOutputGPIO9(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
 
-bool testInput_GPIO9_GPIO10(const uint32_t qe_bit, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
+// Test - turning off pin feature /HOLD
+bool testOutputGPIO9(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
+
+// Test - turning off pin feature /WP
+bool testOutputGPIO10(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
+
+#if 0
+// Use to be called from an example; however, not now.
+bool testInput_GPIO9_GPIO10(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
+#endif
+
+#if 0
+// So far used locally - make static for now
+int test_set_QE(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
+bool testFlashWrite(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile);
+#endif
 
 #ifdef __cplusplus
 };

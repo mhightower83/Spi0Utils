@@ -2,6 +2,9 @@
 
 // These options default to 0 or undefined.
 
+//
+-DRUN_SCRIPT_AT_BOOT=1
+
 // Enable when testing the Flash memory on you ESP module for compatibility
 // with this method of reclaimming GPIO9 and GPIO10.
 // "write once, debug everywhere"

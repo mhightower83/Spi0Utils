@@ -29,14 +29,14 @@ void blinky() {
   if (kWinkInterval < current - last_wink) {
     last_wink = current;
     uint8_t on9 = digitalRead(9);
-    digitalWrite(10, on9);
-    digitalWrite(9, (on9) ? LOW : HIGH);
+    digitalWrite(10u, on9);
+    digitalWrite(9u, (on9) ? LOW : HIGH);
   }
 }
 
 void setup() {
-  Serial.begin(115200);
-  delay(200);
+  Serial.begin(115200u);
+  delay(200u);
   Serial.println("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
 #if ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
@@ -44,10 +44,10 @@ void setup() {
     /*
       Add additional GPIO pin initialization here
     */
-    digitalWrite(9, HIGH);    // Assumes LED is on when set LOW
-    digitalWrite(10, HIGH);
-    pinMode(9, OUTPUT);
-    pinMode(10, OUTPUT);
+    digitalWrite(9u, HIGH);    // Assumes LED is on when set LOW
+    digitalWrite(10u, HIGH);
+    pinMode(9u, OUTPUT);
+    pinMode(10u, OUTPUT);
   }
 #endif
   last_wink = millis();
@@ -68,10 +68,10 @@ void preinit() {
   gpio_9_10_available = reclaim_GPIO_9_10();
   if (gpio_9_10_available) {
     // urgent GPIO pin initialization
-    digitalWrite(9, LOW);     // Assumes LED is on when set HIGH
-    digitalWrite(10, LOW);
-    pinMode(9, OUTPUT);
-    pinMode(10, OUTPUT);
+    digitalWrite(9u, LOW);     // Assumes LED is on when set HIGH
+    digitalWrite(10u, LOW);
+    pinMode(9u, OUTPUT);
+    pinMode(10u, OUTPUT);
   }
 }
 #endif

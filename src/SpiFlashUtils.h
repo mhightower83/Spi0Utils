@@ -147,12 +147,7 @@ SpiOpResult spi0_flash_write_status_register(const uint32_t idx0, uint32_t statu
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-
-  SpiOpResult ok0 = SPI0Command(cmd, &status, numbits, 0u, prefix);
-  // Optimization - this is not a high use function.
-  // Always call - save the code of testing for failure of Write
-  spi0_flash_write_disable();
-  return ok0;
+  return SPI0Command(cmd, &status, numbits, 0u, prefix);
 }
 
 inline
@@ -162,11 +157,7 @@ SpiOpResult spi0_flash_write_status_register_1(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister1Cmd, &status, numbits, 0u, prefix);
-  // Optimization - this is not a high use function.
-  // Always call - save the code of testing for failure of Write
-  spi0_flash_write_disable();
-  return ok0;
+  return SPI0Command(kWriteStatusRegister1Cmd, &status, numbits, 0u, prefix);
 }
 
 inline
@@ -176,9 +167,7 @@ SpiOpResult spi0_flash_write_status_register_2(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister2Cmd, &status, 8u, 0u, prefix);
-  spi0_flash_write_disable();
-  return ok0;
+  return SPI0Command(kWriteStatusRegister2Cmd, &status, 8u, 0u, prefix);
 }
 
 inline
@@ -188,9 +177,7 @@ SpiOpResult spi0_flash_write_status_register_3(uint32_t status, const bool non_v
     spi0_flash_write_disable();
     prefix = kVolatileWriteEnableCmd;
   }
-  SpiOpResult ok0 = SPI0Command(kWriteStatusRegister3Cmd, &status, 8u, 0u, prefix);
-  spi0_flash_write_disable();
-  return ok0;
+  return SPI0Command(kWriteStatusRegister3Cmd, &status, 8u, 0u, prefix);
 }
 
 struct FlashAddr24 {

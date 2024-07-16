@@ -4,14 +4,14 @@
 
   Determine if the SPI Flash has support for disabling pin functions /WP
   write protect and /HOLD. Or confirm that those functions are not active.
-  With these functions disabled, GPIO09 and GPIO10 can be reclaimed for general
+  With these functions disabled, GPIO09 and GPIO10 can be reclaimed for GPIO
   sketch use.
 
   At boot "Analyze" will attempt to discover the properties of your SPI Flash.
   It will generate a progress report as it goes. If your device is already
   supported, it will indicate so. Otherwise if the evaluation is successful, it
   will print the contents of a sample "CustomVender.ino" file that you can use
-  with you sketch. See example "OutlineCustom" for more info on using it.
+  with you sketch. See example "OutlineCustom" for more info.
 
   It may be overly optomistic to think that all ESP modules that expose
   SD2/GPIO9 and SD3/GPIO10 can have those pins used as GPIO9 and GPIO10.
@@ -22,7 +22,7 @@
 
   Write once test everywhere.
 
-  Discussion of what we are dealing with:
+  Summary of what we are dealing with:
 
   There are different SPI Flash's used on ESP8266EX modules with many different
   characteristics. Some variations:
@@ -33,8 +33,8 @@
    * With or without support for volatile Status Register QE, PM0, .. bits
    * Support for 16-bit Status Register writes and/or 8-bit Status Register writes
    * Some devices only have Status Register-1 8-bits and no Status Register-2.
-   * With or without support for Status Register Protect bits SRP0 and SRP1 may
-     work to disable /WP feature.
+   * Flash devices with Status Register protect bits SRP0 and SRP1 may use them
+     to disable the pin feature /WP.
    * There may even be those that support volatile and not non-volatile
 
   If the device has feature pin functions /WP and/or /HOLD we need a way to turn
@@ -45,43 +45,45 @@
    * If QE is S9, then SRP0 and SRP1 are available.
    * When QE is S6 there is often no Status Register-2.
      Assumes no SRP0 or SRP1 and write zero to those bits.
-   * Flash supports non-volatile Status Register-1 with write enable cmd 06h
-   * If volatile Status Register is available, then write enable CMD 50h
+   * Flash supports non-volatile Status Register-1 with write enable CMD 06h
+   * If volatile Status Register is supported, then expects write enable CMD 50h
    * A Flash with only non-volatile Status Register bits is of concern due to
      the risk of bricking a device. Once detected, the automated analyze will
      fail/stop. To overide, use the hotkey menu to select the capitalized
      analyze options 'A' or 'B'.
-   * Status Register does not have any OTP bits set.
+   * Status Register must not have any OTP bits set. This can break the tests.
    * SFDP is not required or used at this time.
 */
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <BacktraceLog.h>
-#include <ModeDIO_ReclaimGPIOs.h>
-#include <TestFlashQE/FlashChipId.h>
-#include <TestFlashQE/SFDP.h>
-#include <TestFlashQE/WP_HOLD_Test.h>
-#include <SfdpRevInfo.h>
 
-// #define NOINLINE __attribute__((noinline))
+//D #define NOINLINE __attribute__((noinline))
 #define ETS_PRINTF ets_uart_printf
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
-#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
+#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\n"), ##__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Debug MACROS
 // These control informative messages from the library SpiFlashUtilsQE
 // Also, used in utility_reclaim_gpio_9_10.ino
-#if defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
+
+#if !defined(DBG_SFU_PRINTF) && defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
 // Use lower level print functions when printing before "C++" runtime has initialized.
 #define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
-#elif defined(DEBUG_FLASH_QE)
+#elif !defined(DBG_SFU_PRINTF) && defined(DEBUG_FLASH_QE)
 #define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
 #else
 #define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
+
 #include <SpiFlashUtilsQE.h>
+#include <ModeDIO_ReclaimGPIOs.h>
+#include <SfdpRevInfo.h>
+#include <TestFlashQE/FlashChipId.h>
+#include <TestFlashQE/SFDP.h>
+#include <TestFlashQE/WP_HOLD_Test.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // FlashDiscovery - A list of discovered characteristics that may help guide
@@ -92,11 +94,10 @@ struct FlashDiscovery {
   bool S9 = false;
   bool S6 = false;
   bool WP = false;                // pin function /WP exist
-//D bool has_QE = false;
   bool has_8bw_sr1 = false;       // When true, WEL write operation succeeded
   bool has_8bw_sr2 = false;       // "
   bool has_8bw_sr3 = false;       // "
-  bool has_16bw_sr1 = false;      // "      //D-> TODO recheck i think this was an interpitation problem, false possitive - some devices w/o SR2 may clear WEL
+  bool has_16bw_sr1 = false;      // "
   bool has_volatile = false;
   bool write_QE = false;          // No writable QE bit candidate
   bool pass_WP = false;
@@ -133,13 +134,17 @@ int last_key __attribute__((section(".noinit")));
 
 void printSR321(const char *indent = "", const bool = false);
 
+/*
+  Print sample code for "CustomVender.ino"
+  Should only be called when analyze, /WP, and /HOLD tests pass.
+*/
 void printReclaimFn() {
-    Serial.PRINTF("\n"
+    Serial.PRINTF(
       "//\n"
-      "// Sample CustomVendor.ino\n"
+      "// CustomVendor.ino\n"
       "//\n"
-      "////////////////////////////////////////////////////////////////////////////////\n"
-      "// Expand Flash Vendor support for GPIO9 and GPIO10 reclaim\n"
+      "// Add new flash vendor support for GPIO9 and GPIO10 reclaim\n"
+      "//\n"
       "#if RECLAIM_GPIO_EARLY || DEBUG_FLASH_QE\n"
       "// Use low level print functions when printing before \"C++\" runtime has initialized.\n"
       "#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)\n"
@@ -150,6 +155,7 @@ void printReclaimFn() {
       "#endif\n"
       "\n"
       "#include <SpiFlashUtilsQE.h>\n"
+      "#include <ModeDIO_ReclaimGPIOs.h>\n"
       "\n"
       "extern \"C\" \n"
       "bool spi_flash_vendor_cases(uint32_t device) {\n"
@@ -193,23 +199,30 @@ void printReclaimFn() {
 }
 
 void suggestedReclaimFn() {
-  Serial.PRINTF("\n"
-    "Checking __spi_flash_vendor_cases() for builtin QE bit handler\n");
-  // Check if device is already handled by
-  bool builtin = __spi_flash_vendor_cases(fd_state.device & 0xFFFFFFu);
+  // Check if device is already handled by 'spi_flash_vendor_cases()' and run
+  // test to confirm that it works.
+  bool builtin = processKey('t');
 
   if (fd_state.pass_HOLD && fd_state.pass_WP) {
+    Serial.PRINTF("\n"
+      "////////////////////////////////////////////////////////////////////////////////\n");
     if (builtin) {
-      Serial.PRINTF("\n"
-        "No additional code is needed to support this Flash device; however,\n"
-        "the example would look like this:\n");
+      Serial.PRINTF(
+        "// No additional code is needed to support this Flash device; however,\n"
+        "// the example template would look like this:\n"
+        "//\n");
+    } else {
+      Serial.PRINTF(
+        "// To add support for your new Flash device, copy/paste the example code\n"
+        "// below into a file in your sketch folder.\n"
+        "//\n");
     }
     printReclaimFn();
   } else {
     if (builtin) {
       Serial.PRINTF("\n"
         "Caution: inconsistency detected. Analyze failed to find a configuration for the\n"
-        "Flash, yet the manufacturer ID matches the one we support. There are 11 banks of\n"
+        "Flash, yet the manufacturer ID matches one we support. There are 11 banks of\n"
         "128 manufacturers. It may be the result of an ID collision.\n");
     } else {
       Serial.PRINTF_LN("No clear solution");
@@ -232,23 +245,22 @@ void runScript(int next_key) {
   scripting = true;
   if ('a' == next_key) {
     if (processKey('a')) {
-      // To be confident of the QE bit location S9 or S6 we need to fail and
-      // succeed with /WP, enable and disable write protect with QE.
-
       // At this point, we have a guess for QE bit either S9 or S6
+      // To be confident of the QE bit location S9 or S6 we need to fail and
+      // succeed with /WP tests, enable and disable write protect with QE.
       if (processKey('w')) {
         // Test /HOLD while QE=1 (or the final passing QE value from 'w' test) -
-        // this is a final confirmation that we have free-ed GPIO9 and GPIO10
-        // uses settings suggested by 'w'
+        // this is a final confirmation that we have free-ed both GPIO9 and
+        // GPIO10 uses settings suggested by 'w'
         if (processKey('h')) {
           suggestedReclaimFn();
         } else {
-          Serial.PRINTF_LN("\nUnable to disable pin function /HOLD using QE/S%u", (fd_state.S9) ? 9u : 6u);
+          Serial.PRINTF_LN("\nUnable to disable pin function /HOLD using QE/S%X", (fd_state.S9) ? 9u : 6u);
         }
       } else {
-        Serial.PRINTF_LN("\nUnable to disable pin function /WP using QE/S%u", (fd_state.S9) ? 9u : 6u);
+        Serial.PRINTF_LN("\nUnable to disable pin function /WP using QE/S%X", (fd_state.S9) ? 9u : 6u);
         if (fd_state.S9) {
-          Serial.PRINTF_LN("  Suggest trying QE/S6. Use menu items 'A', 'w', 'h', 'p'");
+          Serial.PRINTF_LN("  Suggest trying QE/S6. Use menu hotkeys 'b', 'w', 'h', 'p'");
         }
       }
     } else {
@@ -263,18 +275,19 @@ void runScript(int next_key) {
 }
 
 extern "C" void patchEarlyCrashReason() {
-  // An early HWDT crash is miss misdentified by the SDK. It reports the reason
-  // as 0 and are often treated as REASON_DEFAULT_RST. The problem still exist
-  // in SDK 3.05. The problem can be seen with crashes in preinit(), setup(),
-  // and extend into the 1st pass through `loop()`.
-  // A workaround is to set word offset 0x0 in system RTC to REASON_WDT_RST from
-  // setup(), preinit() or first pass of loop().
+  // An early HWDT crash is misdentified by the SDK. It reports the reason as 0
+  // and are often treated as REASON_DEFAULT_RST. This problem persist in SDK
+  // 3.05. The issue can be seen with crashes in preinit(), setup(), and
+  // extend into the 1st pass through `loop()`.
+  // The problem stops showing up after the first WDT tick/interrupt is
+  // serviced. A workaround is to set word offset 0x0 in system RTC to
+  // REASON_WDT_RST from setup(), preinit() or first pass of loop().
   uint32_t save_ps = xt_rsil(15u);
   uint32_t rtc0;
-  system_rtc_mem_read(0, &rtc0, sizeof(rtc0));
-  if (0 == rtc0) {
+  system_rtc_mem_read(0u, &rtc0, sizeof(rtc0));
+  if (0u == rtc0) {
     rtc0 = REASON_WDT_RST;
-    system_rtc_mem_write(0, &rtc0, sizeof(rtc0));
+    system_rtc_mem_write(0u, &rtc0, sizeof(rtc0));
   }
   xt_wsr_ps(save_ps);
 }
@@ -313,7 +326,7 @@ void setup() {
           break;
 
         default:
-          Serial.PRINTF_LN("unexpected crash with menu item '%c'", last_key);
+          Serial.PRINTF_LN("unexpected crash with menu hotkey '%c'", last_key);
           break;
       }
       Serial.PRINTF_LN("\nUnable to configure Flash Status Register to free GPIO9 and GPIO10");
@@ -333,7 +346,9 @@ void setup() {
 void loop() {
   if (run_once) {
     run_once = false;
+#ifdef RUN_SCRIPT_AT_BOOT
     runScript('a');   // Start Analyze
+#endif
   }
   serialClientLoop();
 }

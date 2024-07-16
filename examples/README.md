@@ -1,6 +1,6 @@
 # Directory Listing for Examples
 
-For compatible SPI Flash memory, the SPI Flash can be set up to ignore GPIO pins 9 and 10 allowing them to be used on ESP-12F modules, NodeMCU DEV boards, and other modules that expose those pins.
+For compatible SPI Flash memory, the SPI Flash can be set up to ignore /WP and /HOLD (GPIO pins 9 and 10) allowing them to be used on ESP-12F modules, NodeMCU DEV boards, and other modules that expose those pins.
 
 
 ## [Analyze](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Analyze)
@@ -39,7 +39,7 @@ You can also add the module `CustomVendor.ino` if needed.
 Probe the Flash for SFDP data
 
 For information gathering, reads and dumps the SFDP.
-Standalone version - It doesn't require the SpiFlashUtils library
+A standalone Sketch that doesn't require the SpiFlashUtils library.
 
 An example using `experimental::SPI0Command` function to read SPI Flash Data Parameters from Flash and print a hex dump.
 

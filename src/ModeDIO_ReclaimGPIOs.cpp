@@ -101,12 +101,10 @@ EON
 //
 ////////////////////////////////////////////////////////////////////////////////
 */
-
 #include <Arduino.h>
-#include <ModeDIO_ReclaimGPIOs.h>
 
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
-#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
+#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\n"), ##__VA_ARGS__)
 
 // These control informative messages from the library SpiFlashUtils.h
 // As a sub .ino module of a main Sketch these might already be defined.
@@ -120,6 +118,7 @@ EON
 #define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
 #include <SpiFlashUtilsQE.h>
+#include <ModeDIO_ReclaimGPIOs.h>
 
 #ifndef ETS_PRINTF
 #define ETS_PRINTF ets_uart_printf
@@ -273,7 +272,7 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
   }
 
   if (! success) {
-    DBG_SFU_PRINTF("* Unable to find a QE bit handler.\n");
+    DBG_SFU_PRINTF("* No builtin flash QE bit handler.\n");
   }
   return success;
 }

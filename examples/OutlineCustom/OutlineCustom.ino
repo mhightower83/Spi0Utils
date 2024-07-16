@@ -25,8 +25,8 @@ bool gpio_9_10_available = false;
 #endif
 
 void setup() {
-  Serial.begin(115200);
-  delay(200);
+  Serial.begin(115200u);
+  delay(200u);
   Serial.println("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
 #if ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
@@ -39,7 +39,11 @@ void setup() {
 }
 
 void loop() {
-
+  if (gpio_9_10_available) {
+    /*
+      Activities that use GPIO 9 and 10
+    */
+  }
 }
 
 #if RECLAIM_GPIO_EARLY
