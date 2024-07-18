@@ -17,6 +17,7 @@ The "SFDP" may be useful for differentiating between some parts.
     https://www.jedec.org/standards-documents/docs/jesd216b
     Free Download - requires registration
 
+  This example code is in the public domain.
 */
 #include <Arduino.h>
 #include <spi_flash.h>

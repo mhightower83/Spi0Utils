@@ -12,6 +12,8 @@
   resistor to limit the virtual short circuit current to the lesser component's
   operating limit. If the ESP8266's looses, the device may fail to boot.
   And, there is the risk of stressing devices and early failures.
+
+  This example code is in the public domain.
 */
 #include <ModeDIO_ReclaimGPIOs.h>
 

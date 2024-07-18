@@ -7,6 +7,8 @@
 
   Additionally shows using the example code generate by Analyze.ino for
   handling additional Flash devices.
+
+  This example code is in the public domain.
 */
 #include <ModeDIO_ReclaimGPIOs.h>
 

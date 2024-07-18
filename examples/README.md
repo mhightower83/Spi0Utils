@@ -7,7 +7,7 @@ For compatible SPI Flash memory, the SPI Flash can be set up to ignore /WP and /
 
 Evaluate the Flash memory for required attributes.
 Reports if the current code supports the device as is.
-Prints a copy/paste block for creating a `CustomVender.ino` file like that shown in example [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom).
+Prints a copy/paste block for creating a `CustomVender.ino` file like that shown in the example [OutlineCustom](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineCustom). In OutlineCustom, `CustomVender.ino` is a merged collection of examples.
 
 
 ## [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline)
