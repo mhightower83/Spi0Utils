@@ -35,9 +35,9 @@ pin function /WP and /HOLD.
 */
 
 
-#if 0
-// // https://stackoverflow.com/questions/8487986/file-macro-shows-full-path
-// // This value is resolved at compile time.
+#if 1
+// https://stackoverflow.com/questions/8487986/file-macro-shows-full-path
+// This value is resolved at compile time.
 #define _FILENAME_ &(strrchr("/" __FILE__, '/')[1])
 #define CHECK_OK0(a) \
   if ((a)) { \
@@ -67,7 +67,7 @@ void printSR321(const char *indent, const bool always) {
   if (SPI_RESULT_OK == ok0) {
     Serial.PRINTF("%02X:", sr3);
   } else {
-    Serial.PRINTF("XX:");
+    Serial.PRINTF("--:");
   }
 
   uint32_t sr2 = 0u;
@@ -78,7 +78,7 @@ void printSR321(const char *indent, const bool always) {
   if (SPI_RESULT_OK == ok0) {
     Serial.PRINTF("%02X:", sr2);
   } else {
-    Serial.PRINTF("XX:");
+    Serial.PRINTF("--:");
   }
 
   uint32_t sr1 = 0u;
@@ -86,7 +86,7 @@ void printSR321(const char *indent, const bool always) {
   if (SPI_RESULT_OK == ok0) {
     Serial.PRINTF_LN("%02X", sr1);
   } else {
-    Serial.PRINTF_LN("XX");
+    Serial.PRINTF_LN("--");
   }
 
   if (kWELBit  == (kWELBit & sr1)) Serial.PRINTF_LN("%s  WEL=1", indent);

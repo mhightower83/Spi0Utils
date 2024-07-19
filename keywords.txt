@@ -21,7 +21,6 @@
 #######################################
 
 FlashAddr24	KEYWORD1
-GD25Q32C_status	KEYWORD1
 SfdpHdr	KEYWORD1
 SfdpParam	KEYWORD1
 SfdpRevInfo	KEYWORD1
@@ -42,8 +41,12 @@ Wait_SPI_Idle	KEYWORD2
 __spi_flash_vendor_cases	KEYWORD2
 _spi0_flash_read_common	KEYWORD2
 alt_spi_flash_get_id	KEYWORD2
+clear_S6_QE_bit_WPDis	KEYWORD2
+clear_S9_QE_bit__16_bit_sr1_write	KEYWORD2
+clear_S9_QE_bit__8_bit_sr2_write	KEYWORD2
 clear_sr1_mask	KEYWORD2
 clear_sr2_mask	KEYWORD2
+clear_sr_mask	KEYWORD2
 flash_gd25q32c_enable_QIO_mode	KEYWORD2
 get_sfdp_revision	KEYWORD2
 is_QE	KEYWORD2
@@ -53,6 +56,9 @@ is_WEL_dbg	KEYWORD2
 is_WIP	KEYWORD2
 is_spi0_quad	KEYWORD2
 reclaim_GPIO_9_10	KEYWORD2
+set_S6_QE_bit_WPDis	KEYWORD2
+set_S9_QE_bit__16_bit_sr1_write	KEYWORD2
+set_S9_QE_bit__8_bit_sr2_write	KEYWORD2
 spi0_flash_chip_erase	KEYWORD2
 spi0_flash_command_pair	KEYWORD2
 spi0_flash_read_secure_register	KEYWORD2
@@ -88,14 +94,9 @@ verify_status_register_2	KEYWORD2
 # Constants (LITERAL1)
 #######################################
 
-DBG_SFU_PRINTF	LITERAL1
 DEBUG_FLASH_QE	LITERAL1
-GD25Q32C_STATUS1=0	LITERAL1
-GD25Q32C_STATUS2=1	LITERAL1
-GD25Q32C_STATUS3=2	LITERAL1
 PRESERVE_EXISTING_STATUS_BITS	LITERAL1
 RECLAIM_GPIO_EARLY	LITERAL1
-SFDPREVINFO_H	LITERAL1
 SPI_FLASH_VENDOR_BERGMICRO	LITERAL1
 SPI_FLASH_VENDOR_MYSTERY_D8	LITERAL1
 SPI_FLASH_VENDOR_ZBIT	LITERAL1

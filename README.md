@@ -29,11 +29,40 @@ Two main steps:
    flash memory. If needed, add the copy/paste code to a `CustomVendor.ino` file
    in your sketch folder. (How often does this work? - unknown, it works with my devices)
 
-1. Call `reclaim_GPIO_9_10()` from your Sketch startup code, either `preinit()`
+2. Call `reclaim_GPIO_9_10()` from your Sketch startup code, either `preinit()`
    or `setup()`. Perform additional setup as needed.
 
 See [example Sketches](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples#readme)
 for more details.
+
+A lot of the code in this project was for evaluating the flash memory once you
+are finished with that, all that you need to recover GPIO 9 and 10 are three
+main functions to pick from and one argument to specify.
+
+For flash memory with QE or WPDis bit at BIT6:
+```
+bool set_S6_QE_bit_WPDis(bool non_volatile);
+```
+For flash memory with QE bit at BIT9 and support 16-bit Status Register-1 writes
+which will also include boards that support the build option SPI Mode: "QIO":
+```
+bool set_S9_QE_bit__16_bit_sr1_write(bool non_volatile);
+```
+For flash memory with QE bit at BIT9 and support only 8-bit Status Register writes:
+```
+bool set_S9_QE_bit__8_bit_sr2_write(bool non_volatile);
+
+```
+
+If the flash memory supports volatile Status Register bits, use `volatile_bit`
+for the argument. Otherwise, use non_volatile_bit. A concern with using the
+`non_volatile_bit` is wear on the Flash. In some cases, the BootROM cannot
+change the QE bit leaving it as is. So once set it stays set. This is likely to
+happen for QE/S6.
+> The BootROM can only handle QE/S9 and 16-bit Status Register-1 writes.
+
+If you want to look at how it works start with `reclaim_GPIO_9_10()` in
+`ModeDIO_ReclaimGPIOs.cpp`
 
 When using GPIO9 and GPIO10, be mindful these pins are driven high during boot.
 And stay high until reclaimed then they are setup with `pinMode(, INPUT)` like

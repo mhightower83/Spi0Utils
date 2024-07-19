@@ -116,8 +116,8 @@ bool is_spi0_quad(void) {
 // see RTOS_SDK/components/spi_flash/src/spi_flash.c
 // Don't rely on that Espressif sample too closely. The data shown for EN25Q16A
 // is not correct. The EN25Q16A and EN25Q16B do no support SFDP.
-[[maybe_unused]]
-static bool set_S6_QE_bit_WPDis(const bool non_volatile) {
+[[maybe_unused]] static
+bool set_S6_QE_bit_WPDis(const bool non_volatile) {
   uint32_t status = 0u;
   spi0_flash_read_status_register_1(&status);
   bool is_set = (0u != (status & kQES6Bit));
@@ -137,8 +137,8 @@ static bool set_S6_QE_bit_WPDis(const bool non_volatile) {
   return is_S6_QE_WPDis();
 }
 
-[[maybe_unused]]
-static bool clear_S6_QE_bit_WPDis(bool non_volatile = false) {
+[[maybe_unused]] static
+bool clear_S6_QE_bit_WPDis(bool non_volatile = false) {
   uint32_t status = 0u;
   spi0_flash_read_status_register_1(&status);
   bool not_set = (0u == (status & kQES6Bit));
@@ -158,8 +158,8 @@ static bool clear_S6_QE_bit_WPDis(bool non_volatile = false) {
   return (false == is_S6_QE_WPDis());
 }
 
-[[maybe_unused]]
-static bool set_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
+[[maybe_unused]] static
+bool set_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
   uint32_t status2 = 0u;
   spi0_flash_read_status_register_2(&status2);
   bool is_set = (0u != (status2 & kQES9Bit1B));
@@ -178,8 +178,8 @@ static bool set_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
   return is_QE();
 }
 
-[[maybe_unused]]
-static bool set_S9_QE_bit__16_bit_sr1_write(const bool non_volatile) {
+[[maybe_unused]] static
+bool set_S9_QE_bit__16_bit_sr1_write(const bool non_volatile) {
   uint32_t status = 0u;
   spi0_flash_read_status_registers_2B(&status);
   bool is_set = (0u != (status & kQES9Bit2B));
@@ -200,8 +200,8 @@ static bool set_S9_QE_bit__16_bit_sr1_write(const bool non_volatile) {
 
 #if 0
 // I don't think these are needed anymore
-[[maybe_unused]]
-static void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
+[[maybe_unused]] static
+void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
   #if 0
   // BUGBUG sets WEL
   uint32_t status = flash_gd25q32c_read_status(reg_0idx);
@@ -227,8 +227,8 @@ void clear_sr2_mask(const uint32_t pattern) {
 #endif
 
 #if 1
-[[maybe_unused]]
-static bool clear_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
+[[maybe_unused]] static
+bool clear_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
   uint32_t status2 = 0u;
   spi0_flash_read_status_register_2(&status2);
   bool is_set = (0u != (status2 & kQES9Bit1B));
@@ -247,8 +247,8 @@ static bool clear_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
   return (false == is_QE());
 }
 
-[[maybe_unused]]
-static bool clear_S9_QE_bit__16_bit_sr1_write(const bool non_volatile) {
+[[maybe_unused]] static
+bool clear_S9_QE_bit__16_bit_sr1_write(const bool non_volatile) {
   uint32_t status = 0u;
   spi0_flash_read_status_registers_2B(&status);
   bool is_set = (0u != (status & kQES9Bit2B));
