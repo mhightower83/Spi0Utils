@@ -5,6 +5,8 @@
 // missing from spi_vendors.h
 #ifndef SPI_FLASH_VENDOR_BERGMICRO
 #define SPI_FLASH_VENDOR_BERGMICRO 0xE0u
+#endif
+#ifndef SPI_FLASH_VENDOR_ZBIT
 #define SPI_FLASH_VENDOR_ZBIT      0x5Eu
 #endif
 

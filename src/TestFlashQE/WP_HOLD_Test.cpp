@@ -33,15 +33,8 @@
 #include <SpiFlashUtils.h>
 #include "WP_HOLD_Test.h"
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
-#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\r\n"), ##__VA_ARGS__)
+#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\n"), ##__VA_ARGS__)
 
-#if 1
-#define VERBOSE_PRINTF Serial.PRINTF
-#define VERBOSE_PRINTF_LN Serial.PRINTF_LN
-#else
-#define VERBOSE_PRINTF(a, ...) do { (void)a; } while(false)
-#define VERBOSE_PRINTF_LN(a, ...) do { (void)a; } while(false)
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -337,9 +330,9 @@ bool testOutputGPIO10(const uint32_t qe_pos, const bool use_16_bit_sr1, const bo
   using namespace experimental;
   bool pass = false;
 
-  VERBOSE_PRINTF_LN("\nRun verification test for pin function /WP disable");
+  Serial.PRINTF_LN("\nRun verification test for pin function /WP disable");
   if (9u != qe_pos && 6u != qe_pos && 0xFFu != qe_pos) {
-    VERBOSE_PRINTF_LN("* QE/S%X bit field specification undefined should be either S6 or S9", qe_pos);
+    Serial.PRINTF_LN("* QE/S%X bit field specification undefined should be either S6 or S9", qe_pos);
     return pass;
   }
   digitalWrite(10u, HIGH);     // ensure /WP is not asserted, otherwise test_set_QE may fail
@@ -347,33 +340,33 @@ bool testOutputGPIO10(const uint32_t qe_pos, const bool use_16_bit_sr1, const bo
 
   int _qe = test_set_QE(qe_pos, use_16_bit_sr1, _non_volatile, use_preset); // -1, 0, 1
   if (0xFFu != qe_pos && -1 == _qe) {
-    VERBOSE_PRINTF_LN("* Test Write: set QE/S%X bit - failed", qe_pos);
+    Serial.PRINTF_LN("* Test Write: set QE/S%X bit - failed", qe_pos);
     return false;
   }
 
   int srp10_WP = get_SRP10(qe_pos); // already masked with 3
 
   if (9u == qe_pos) {
-    VERBOSE_PRINTF_LN("  Test Write: QE/S%X=%d SRP1:SRP0=%u:%u, and GPIO10 as OUTPUT",
+    Serial.PRINTF_LN("  Test Write: QE/S%X=%d SRP1:SRP0=%u:%u, and GPIO10 as OUTPUT",
       qe_pos, _qe, (srp10_WP >> 1u) & 1u, srp10_WP & 1u);
   } else
   if (6u == qe_pos) {
-    VERBOSE_PRINTF_LN("  Test Write: QE/S%X=%d, and GPIO10 as OUTPUT", qe_pos, _qe);
+    Serial.PRINTF_LN("  Test Write: QE/S%X=%d, and GPIO10 as OUTPUT", qe_pos, _qe);
   } else {
     if (! use_preset) {
-      VERBOSE_PRINTF_LN("  Test Write: No QE bit, and GPIO10 as OUTPUT");
+      Serial.PRINTF_LN("  Test Write: No QE bit, and GPIO10 as OUTPUT");
     }
   }
-  VERBOSE_PRINTF_LN("  Test Write: using %svolatile Status Register", (_non_volatile) ? "non-" : "");
+  Serial.PRINTF_LN("  Test Write: using %svolatile Status Register", (_non_volatile) ? "non-" : "");
 
   // With pin 10, HIGH, expect success regardless of QE and SRP1 and SRP0
   pass = testFlashWrite(qe_pos, use_16_bit_sr1, _non_volatile);
-  VERBOSE_PRINTF_LN("  Test Write: With /WP set %s write %s", "HIGH", (pass) ? "succeeded" : "failed.");
+  Serial.PRINTF_LN("  Test Write: With /WP set %s write %s", "HIGH", (pass) ? "succeeded" : "failed.");
 
   // Expect success if QE=1 and/or SRP1:0=0:0 are relavent, failure otherwise
   digitalWrite(10u, LOW);
   pass = testFlashWrite(qe_pos, use_16_bit_sr1, _non_volatile);
-  VERBOSE_PRINTF_LN("  Test Write: With /WP set %s write %s", "LOW", (pass) ? "succeeded" : "failed.");
+  Serial.PRINTF_LN("  Test Write: With /WP set %s write %s", "LOW", (pass) ? "succeeded" : "failed.");
 
   pinMode(10u, SPECIAL);
   return pass;

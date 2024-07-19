@@ -23,8 +23,7 @@ extern "C" {
 #endif
 
 // Defines DBG_SFU_PRINTF and DEBUG_FLASH_QE provided by
-#include "SpiFlashUtils.h"
-
+#include "SpiFlashUtils.h"  // handles DBG_SFU_PRINTF macro
 #include "BootROM_NONOS.h"
 
 namespace experimental {
@@ -44,14 +43,6 @@ namespace experimental {
 //
 // TODO factor out as always 0
 #define PRESERVE_EXISTING_STATUS_BITS 0
-#endif
-
-#if DEBUG_FLASH_QE && ! defined(DBG_SFU_PRINTF)
-#define DBG_SFU_PRINTF ets_uart_printf
-#endif
-
-#ifndef DBG_SFU_PRINTF
-#define DBG_SFU_PRINTF(...) do {} while (false)
 #endif
 
 constexpr uint32_t kWIPBit    = BIT0;  // Write In Progress

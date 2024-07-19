@@ -21,8 +21,31 @@
 
 #if ((1 - DEBUG_FLASH_QE - 1) == 2)
 #undef DEBUG_FLASH_QE
-#define DEBUG_FLASH_QE 0
+#define DEBUG_FLASH_QE 1
 #endif
+
+#if ((1 - RECLAIM_GPIO_EARLY - 1) == 2)
+#undef RECLAIM_GPIO_EARLY
+#define RECLAIM_GPIO_EARLY 1
+#endif
+
+/*
+  The debug printing could be controled/overriden by the module that includes
+  this file; however, it is less confusing if we do it all in one place - this
+  core include file.
+*/
+#if !defined(DBG_SFU_PRINTF) && DEBUG_FLASH_QE && RECLAIM_GPIO_EARLY
+// Use lower level print functions when printing before "C++" runtime has
+// initialized. Since no ISRs are involved we can save on DRAM strings by using
+// umm_info_safe_printf_P().
+extern "C" int umm_info_safe_printf_P(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+#define DBG_SFU_PRINTF(fmt, ...) umm_info_safe_printf_P(PSTR(fmt),##__VA_ARGS__)
+#elif !defined(DBG_SFU_PRINTF) && DEBUG_FLASH_QE
+#define DBG_SFU_PRINTF(fmt, ...) Serial.printf_P(PSTR(fmt), ##__VA_ARGS__)
+#else
+#define DBG_SFU_PRINTF(...) do {} while (false)
+#endif
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,11 +54,6 @@ extern "C" {
 extern SpiFlashOpResult spi_flash_read_status(uint32_t *status); // NONOS_SDK
 #include <spi_flash.h>    // SpiOpResult
 #include <spi_utils.h>
-
-// Dropout unused debug printfs
-#ifndef DBG_SFU_PRINTF
-#define DBG_SFU_PRINTF(...) do {} while (false)
-#endif
 
 namespace experimental {
 
@@ -213,37 +231,38 @@ void spi_set_addr(uint8_t *buf, const uint32_t addr) {
 SpiOpResult spi0_flash_read_status_registers_2B(uint32_t *pStatus);
 SpiOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus);
 
-// Concerns:
-// * This function requires the Flash Chip to support legacy 16-bit status register writes.
-// * Some Flash Chips only support 8-bit status registry writes (1, 2, 3)
-//   * see spi0_flash_write_status_register(idx, status) for 8-bit writes.
-SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status, const bool non_volatile);
+/*
+  Only call when the Flash supports 16-bit status register writes!
+
+  Concerns:
+    * This function requires the Flash Chip to support legacy 16-bit status register writes.
+    * Some Flash Chips only support 8-bit status registry writes (1, 2, 3)
+    * see spi0_flash_write_status_register(idx, status) for 8-bit writes.
+*/
+inline
+SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status16, const bool non_volatile) {
+  // Assume the flash supports 2B write if the SPIC2BSE bit is set.
+  if (0u == (SPI0C & SPIC2BSE)) {
+    DBG_SFU_PRINTF("\n* 2 Byte Status Write not enabled\n");
+    // Let them try. If it fails, it will be discovered on verify.
+    // All updates should/must be verified.
+    // return SPI_RESULT_ERR;
+  }
+
+  // Winbond supports, some GD devices do not.
+  return spi0_flash_write_status_register_1(status16, non_volatile, 16u);
+}
 
 // Use for tightly sending two commands to the Flash. Like an enable instruction
 // followed by the action instruction. No other flash instruction get inserted
 // between them.
-void spi0_flash_command_pair(const uint8_t cmd1, const uint8_t cmd2);
+void spi0_flash_command_pair(const uint8_t cmd1, const uint8_t cmd2, const uint32_t us = 0);
 
-//D #if 0
-//D inline
-//D SpiOpResult spi0_flash_software_reset() {
-//D   // SPI0Command method is not safe. iCache reads could be attempted within
-//D   // the 10us (tRST) required to reliable reset.
-//D   // This should be done out of IRAM with a Cache_Read_Disable_2/
-//D   // Cache_Read_Enable_2 wrapper.
-//D   // TODO move logic to IRAM and feed WDT for 100ms.
-//D   SpiOpResult ok0 = SPI0Command(kResetCmd, NULL, 0u, 0u, kEnableResetCmd);
-//D   ets_delay_us(20u); // needs 10us (tRST)
-//D   // or 40us for GigaDevice or 25ms if erase was running.
-//D   return ok0;
-//D }
-//D #else
 inline
-SpiOpResult spi0_flash_software_reset() {
-  spi0_flash_command_pair(kEnableResetCmd, kResetCmd);
+SpiOpResult spi0_flash_software_reset(uint32_t delay_us) {
+  spi0_flash_command_pair(kEnableResetCmd, kResetCmd, delay_us);
   return SPI_RESULT_OK;
 }
-//D #endif
 
 inline
 SpiOpResult spi0_flash_chip_erase() {

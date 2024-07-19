@@ -1,16 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Expand Flash Vendor support for GPIO9 and GPIO10 reclaim
-// Adds support for EN25QH128A
-#if RECLAIM_GPIO_EARLY || DEBUG_FLASH_QE
-// Use lower level print functions when printing before "C++" runtime has initialized.
-#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
-#elif DEBUG_FLASH_QE
-#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
-#else
-#define DBG_SFU_PRINTF(...) do {} while (false)
-#endif
-
-#include <SpiFlashUtilsQE.h>
+//
+#include <ModeDIO_ReclaimGPIOs.h>
 #include <SfdpRevInfo.h>
 #include <spi_flash_defs.h>
 #define SPI_FLASH_SR3_XM25QH32C_DRV_100 0
@@ -48,12 +39,12 @@ bool spi_flash_vendor_cases(uint32_t device) {
     // Datasheet: Rev M issue date 2018/07/17
     // XMC XM25QH32B
     // SFDP Revision: 1.00, 1ST Parameter Table Revision: 1.00
-    // SFDP Table Ptr: 0x30, Size: 36 Bytes
+    // SFDP Table Ptr: 0x30, Size: 9 DW
     //
     // Datasheet: Rev 2.1 issue date 2023/12/15
     // XMC XM25QH32C
     // SFDP Revision: 1.06, 1ST Parameter Table Revision: 1.06
-    // SFDP Table Ptr: 0x30, Size: 36 Bytes
+    // SFDP Table Ptr: 0x30, Size: 9 DW
     //
     // Special handling for XMC XM25QH32B anomaly where driver strength value is
     // lost when switching from non-volatile to volatile requires backup/restore

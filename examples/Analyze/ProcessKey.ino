@@ -150,7 +150,7 @@ bool test_sr_8_bit_write(uint32_t reg_0idx) {
   ok0 = spi0_flash_write_status_register(reg_0idx, status, non_volatile_bit, 8u);
   CHECK_OK0(ok0);
   if (is_WEL()) {
-    ETS_PRINTF("* WEL left set after %u-bit Status Register-%u write.\n", 8u, reg_0idx + 1u);
+    Serial.PRINTF("* WEL left set after %u-bit Status Register-%u write.\n", 8u, reg_0idx + 1u);
     return false;
   }
 
@@ -162,12 +162,12 @@ bool test_sr_8_bit_write(uint32_t reg_0idx) {
     new_status &= 0xFCu;
   }
   if (new_status != status) {
-    ETS_PRINTF(
+    Serial.PRINTF(
       "* After a %u-bit Status Register-%u write, the Status Register changed\n"
       "  when it should not have .\n", 8u, reg_0idx + 1u);
     success = false;
   } else {
-    ETS_PRINTF("  Pass - %u-bit Write Status Register-%u.\n", 8u, reg_0idx + 1u);
+    Serial.PRINTF("  Pass - %u-bit Write Status Register-%u.\n", 8u, reg_0idx + 1u);
   }
   return success;
 }
@@ -188,7 +188,7 @@ bool test_sr1_16_bit_write() {
   CHECK_OK0(ok0);
 
   if (is_WEL()) {
-    ETS_PRINTF("* WEL left set after %u-bit Status Register-%u write.\n", 16u, 1u);
+    Serial.PRINTF("* WEL left set after %u-bit Status Register-%u write.\n", 16u, 1u);
     return false;
   }
 
@@ -201,12 +201,12 @@ bool test_sr1_16_bit_write() {
   CHECK_OK0(ok0);
   new_sr1 |= (new_sr2 << 8u);
   if (new_sr1 != sr1) {
-    ETS_PRINTF(
+    Serial.PRINTF(
       "* After a %u-bit Status Register-%u write, the Status Register changed\n"
       "  when it should not have .\n", 16u, 1u);
     success = false;
   } else {
-    ETS_PRINTF("  Pass - %u-bit Write Status Register-%u.\n", 16u, 1u);
+    Serial.PRINTF("  Pass - %u-bit Write Status Register-%u.\n", 16u, 1u);
   }
   return success;
 }
@@ -927,7 +927,7 @@ bool processKey(const int key) {
       pinMode(10u, OUTPUT);
       digitalWrite(10u, HIGH);
       Serial.PRINTF_LN("\nStart SPI Flash Software Reset (66h, 99h):");
-      spi0_flash_software_reset();
+      spi0_flash_software_reset(25000u);
       printSR321("  ", true);
       break;
 

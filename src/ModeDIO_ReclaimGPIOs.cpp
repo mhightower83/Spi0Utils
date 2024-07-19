@@ -117,27 +117,7 @@ EON
 ////////////////////////////////////////////////////////////////////////////////
 */
 #include <Arduino.h>
-
-#define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
-#define PRINTF_LN(a, ...)     printf_P(PSTR(a "\n"), ##__VA_ARGS__)
-
-// These control informative messages from the library SpiFlashUtils.h
-// As a sub .ino module of a main Sketch these might already be defined.
-// Make flexable enough to handle compile as either .ino or .cpp
-#if RECLAIM_GPIO_EARLY && DEBUG_FLASH_QE
-// Use lower level print functions when printing before "C++" runtime has initialized.
-#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
-#elif DEBUG_FLASH_QE
-#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
-#else
-#define DBG_SFU_PRINTF(...) do {} while (false)
-#endif
-#include <SpiFlashUtilsQE.h>
 #include <ModeDIO_ReclaimGPIOs.h>
-
-#ifndef ETS_PRINTF
-#define ETS_PRINTF ets_uart_printf
-#endif
 
 #if !defined(SPI_FLASH_VENDOR_MYSTERY_D8)
 #include "FlashChipId_D8.h"

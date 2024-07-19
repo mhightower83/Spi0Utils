@@ -34,9 +34,6 @@
   that can disable /WP and /HOLD everything should work.
 
 
-
-  Write once test everywhere.
-
   Summary of what we are dealing with:
 
   There are different SPI Flash's used on ESP8266EX modules with many different
@@ -74,26 +71,23 @@
 #include <ESP8266WiFi.h>
 #include <BacktraceLog.h>
 
-//D #define NOINLINE __attribute__((noinline))
-#define ETS_PRINTF ets_uart_printf
+#define NOINLINE __attribute__((noinline))
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
 #define PRINTF_LN(a, ...)     printf_P(PSTR(a "\n"), ##__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
-// Debug MACROS
-// These control informative messages from the library SpiFlashUtilsQE
-// Also, used in utility_reclaim_gpio_9_10.ino
-
-#if !defined(DBG_SFU_PRINTF) && defined(RECLAIM_GPIO_EARLY) && defined(DEBUG_FLASH_QE)
-// Use lower level print functions when printing before "C++" runtime has initialized.
-#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)
-#elif !defined(DBG_SFU_PRINTF) && defined(DEBUG_FLASH_QE)
-#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)
-#else
-#define DBG_SFU_PRINTF(...) do {} while (false)
-#endif
-
-#include <SpiFlashUtilsQE.h>
+// Debug MACROS in SpiFlashUtils library for control printing also referenced
+// by ModeDIO_ReclaimGPIOs. If required, place these defines in your
+// Sketch.ino.globals.h file.
+//
+//  -DDEBUG_FLASH_QE=1 - use to debug library or provide insite when things
+//     don't work as expected. When finished with debugging, remove define to
+//     reduce code and DRAM footprint.
+//
+//  -DRECLAIM_GPIO_EARLY=1 - Build flag indicates that reclaim_GPIO_9_10() may
+//     be called before C++ runtime has been called as in preinit().
+//     Works with -DDEBUG_FLASH_QE=1 to allow debug printing before C++ runtime.
+//
 #include <ModeDIO_ReclaimGPIOs.h>
 #include <SfdpRevInfo.h>
 #include <TestFlashQE/FlashChipId.h>
@@ -160,16 +154,6 @@ void printReclaimFn() {
       "//\n"
       "// Add new flash vendor support for GPIO9 and GPIO10 reclaim\n"
       "//\n"
-      "#if RECLAIM_GPIO_EARLY || DEBUG_FLASH_QE\n"
-      "// Use low level print functions when printing before \"C++\" runtime has initialized.\n"
-      "#define DBG_SFU_PRINTF(a, ...) ets_uart_printf(a, ##__VA_ARGS__)\n"
-      "#elif DEBUG_FLASH_QE\n"
-      "#define DBG_SFU_PRINTF(a, ...) Serial.PRINTF(a, ##__VA_ARGS__)\n"
-      "#else\n"
-      "#define DBG_SFU_PRINTF(...) do {} while (false)\n"
-      "#endif\n"
-      "\n"
-      "#include <SpiFlashUtilsQE.h>\n"
       "#include <ModeDIO_ReclaimGPIOs.h>\n"
       "\n"
       "extern \"C\" \n"
@@ -183,9 +167,9 @@ void printReclaimFn() {
     if (sfdpInfo.u32[0]) {
       Serial.PRINTF(
         "    // SFDP Revision: %u.%02u, 1ST Parameter Table Revision: %u.%02u\n"
-        "    // SFDP Table Ptr: 0x%02X, Size: %u Bytes\n",
+        "    // SFDP Table Ptr: 0x%02X, Size: %u DW\n",
         sfdpInfo.hdr_major,  sfdpInfo.hdr_minor, sfdpInfo.parm_major, sfdpInfo.parm_minor,
-        sfdpInfo.tbl_ptr, sfdpInfo.sz_dw * 4u);
+        sfdpInfo.tbl_ptr, sfdpInfo.sz_dw);
     } else {
       Serial.PRINTF("    // SFDP none\n");
     }

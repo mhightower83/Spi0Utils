@@ -20,18 +20,8 @@
 #include <user_interface.h> // system_soft_wdt_feed()
 #include "BootROM_NONOS.h"
 
-#if ((1 - DEBUG_FLASH_QE - 1) == 2)
-#undef DEBUG_FLASH_QE
-#define DEBUG_FLASH_QE 0
-#endif
-
 extern "C" {
 
-#if DEBUG_FLASH_QE
-#define DBG_SFU_PRINTF ets_uart_printf
-#else
-#define DBG_SFU_PRINTF(...) do {} while (false)
-#endif
 #include "SpiFlashUtils.h"
 using experimental::SPI0Command;
 
@@ -85,21 +75,9 @@ SpiOpResult spi0_flash_read_status_registers_3B(uint32_t *pStatus) {
   return ok0;
 }
 
-SpiOpResult spi0_flash_write_status_registers_2B(uint32_t status16, bool non_volatile) {
-  // Assume the flash supports 2B write if the SPIC2BSE bit is set.
-  if (0u == (SPI0C & SPIC2BSE)) {
-    DBG_SFU_PRINTF("\n* 2 Byte Status Write not enabled\n");
-    // Let them try. If it fails, it will be discovered on verify.
-    // All updates should/must be verified.
-    // return SPI_RESULT_ERR;
-  }
-
-  // Winbond supports, some GD devices do not.
-  return spi0_flash_write_status_register_1(status16, non_volatile, 16u);
-}
 
 //  spi0_flash_command_pair(kEnableResetCmd, kResetCmd);
-void IRAM_ATTR spi0_flash_command_pair(const uint8_t cmd1, const uint8_t cmd2) {
+void IRAM_ATTR spi0_flash_command_pair(const uint8_t cmd1, const uint8_t cmd2, const uint32_t us) {
   system_soft_wdt_feed();
 
   Cache_Read_Disable_2();
@@ -139,7 +117,7 @@ void IRAM_ATTR spi0_flash_command_pair(const uint8_t cmd1, const uint8_t cmd2) {
   SPI0C  = oldSPI0C;
 
   // needs 10us (tRST) or 40us for GigaDevice or 25ms if erase was running.
-  ets_delay_us(25000u);
+  if (us) ets_delay_us(us);
   // Before making lots of demands after a reset, say hello first with a read
   // status. Otherwise, the iCache stuff gets zeros (observed with XMC)
   // Yes, SPI_read_status() is also called within Wait_SPI_Idle(); however, that
