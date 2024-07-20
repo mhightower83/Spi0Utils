@@ -84,17 +84,18 @@ Not all Flash devices that claim to disable pin function /WP with QE=1, fully do
 See [example Sketches](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples#readme)
 for more details.
 
-### Three common QE flash cases
+## Three common QE flash cases
 
 A lot of the code in this library is for evaluating the flash memory once you
 are finished with that, all you need to recover GPIO 9 and 10 is one of three main functions. Assuming your flash memory is not already supported by the builtin QE handlers.
 
-1) For flash memory with QE or WPDis bit at BIT6:
-```
+### 1. set_S6_QE_bit_WPDis
+For flash memory with QE or WPDis bit at BIT6:
+```cpp
 bool set_S6_QE_bit_WPDis(bool non_volatile);
 ```
 Example EON flash EN25Q32C, CustomeVendor.ino:
-```
+```cpp
 #include <ModeDIO_ReclaimGPIOs.h>
 
 extern "C"
@@ -113,13 +114,13 @@ bool spi_flash_vendor_cases(uint32_t device) {
   return success;
 }
 ```
-2) For flash memory with QE bit at BIT9 and support 16-bit Status Register-1 writes
-which will also include boards that support the build option SPI Mode: "QIO":
-```
+### 2. `set_S9_QE_bit__16_bit_sr1_write`
+For flash memory with QE bit at BIT9 and support 16-bit Status Register-1 writes which will also include boards that support the build option SPI Mode: "QIO":
+```cpp
 bool set_S9_QE_bit__16_bit_sr1_write(bool non_volatile);
 ```
 Example Winbond flash 25Q32FVSIG, CustomeVendor.ino:
-```
+```cpp
 #include <ModeDIO_ReclaimGPIOs.h>
 
 extern "C"
@@ -138,12 +139,13 @@ bool spi_flash_vendor_cases(uint32_t device) {
   return success;
 }
 ```
-3) For flash memory with QE bit at BIT9 and support only 8-bit Status Register writes:
-```
+### 3. set_S9_QE_bit__8_bit_sr2_write
+For flash memory with QE bit at BIT9 and support only 8-bit Status Register writes:
+```cpp
 bool set_S9_QE_bit__8_bit_sr2_write(bool non_volatile);
 ```
 Example GigaDevice flash GD25Q32C, CustomeVendor.ino:
-```
+```cpp
 #include <ModeDIO_ReclaimGPIOs.h>
 
 extern "C"
