@@ -242,8 +242,9 @@ void runScript(int next_key) {
     Print the custom example
   */
   scripting = true;
-  if ('a' == next_key) {
-    if (processKey('a')) {
+  Serial.PRINTF_LN("\nRun Script at 1ST boot");
+  if ('a' == next_key || 'b' == next_key || 'A' == next_key || 'B' == next_key) {
+    if (processKey(next_key)) {
       // At this point, we have a guess for QE bit either S9 or S6
       // To be confident of the QE bit location S9 or S6 we need to fail and
       // succeed with /WP tests, enable and disable write protect with QE.

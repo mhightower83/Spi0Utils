@@ -450,7 +450,7 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
         "* No volatile Status Register bits were detected. Without volatile Status Register\n"
         "* bits, continuing with more tests could brick the Flash. To analyze without\n"
         "* safety, use the capitalized hotkeys 'A' or 'B'.\n"
-        "* For example to rerun with \"hint S6\" enter hostkeys: Bwhp\n");
+        "* For example to rerun with \"hint S6\" enter hotkeys: Bwhp\n");
       return false;
     }
   }

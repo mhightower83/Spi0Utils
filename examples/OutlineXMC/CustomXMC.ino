@@ -91,9 +91,10 @@ bool spi_flash_vendor_cases(uint32_t device) {
   }
 
 #if 1
-  // If you have no need for the additional boards supported in
-  // __spi_flash_vendor_cases(device); this block can be omitted this block.
-  // The function will be omiited a link time.
+  // If you do not need the additional boards supported in
+  // __spi_flash_vendor_cases(device); this block can be omitted. The function
+  // __spi_flash_vendor_cases will be omitted by the linker from the build.
+
   if (! success) {
     // Check builtin support
     success = __spi_flash_vendor_cases(device);
