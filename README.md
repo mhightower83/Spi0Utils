@@ -135,8 +135,8 @@ main functions. Assuming your flash memory is not already supported by the
 builtin QE handlers.
 
 The function `spi_flash_vendor_cases()` shown in the examples below are part of
-the `reclaim_GPIO_9_10()` call chain. See [example Sketches](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline/Outline.ino)
-for `reclaim_GPIO_9_10()` use and placement.
+the `reclaim_GPIO_9_10()` call chain. See [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline/Outline.ino)
+example sketch for `reclaim_GPIO_9_10()` use and placement.
 
 
 ### 1. `set_S6_QE_bit_WPDis`
