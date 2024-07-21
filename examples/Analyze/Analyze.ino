@@ -14,30 +14,30 @@
  *   limitations under the License.
  */
 /*
-  A SPI Flash test/analyzer that generates example/sample code for function
+  A SPI flash memory test/analyzer that generates example/sample code for function
   `spi_flash_vendor_cases` using the results from the tests.
 
-  Determine if the SPI Flash has support for disabling pin functions /WP
+  Determine if the SPI flash memory has support for disabling pin functions /WP
   write protect and /HOLD. Or confirm that those functions are not active.
   With these functions disabled, GPIO09 and GPIO10 can be reclaimed for GPIO
   sketch use.
 
-  At boot "Analyze" will attempt to discover the properties of your SPI Flash.
-  It will generate a progress report as it goes. If your device is already
-  supported, it will indicate so. Otherwise if the evaluation is successful, it
-  will print the contents of a sample "CustomVender.ino" file that you can use
-  with you sketch. See example "OutlineCustom" for more info.
+  At boot "Analyze" will attempt to discover the properties of your SPI flash
+  memory. It will generate a progress report as it goes. If your device is
+  already supported, it will indicate so. Otherwise if the evaluation is
+  successful, it will print the contents of a sample "CustomVender.ino" file
+  that you can use with you sketch. See example "OutlineCustom" for more info.
 
   It may be overly optomistic to think that all ESP modules that expose
   SD2/GPIO9 and SD3/GPIO10 can have those pins used as GPIO9 and GPIO10.
-  However, if the module maker paired the ESP8266EX with a compatible SPI Flash
-  that can disable /WP and /HOLD everything should work.
+  However, if the module maker paired the ESP8266EX with a compatible SPI flash
+  memory that can disable /WP and /HOLD everything should work.
 
 
   Summary of what we are dealing with:
 
-  There are different SPI Flash's used on ESP8266EX modules with many different
-  characteristics. Some variations:
+  There are different SPI flash chips used on ESP8266EX modules with many
+  different characteristics. Some variations:
    * With or without support for QE, Quad Enable
    * QE bit possition at S6, S9, and S15. (S15 is not supported)
    * With or without support for pin function /WP
@@ -45,7 +45,7 @@
    * With or without support for volatile Status Register QE, PM0, .. bits
    * Support for 16-bit Status Register writes and/or 8-bit Status Register writes
    * Some devices only have Status Register-1 8-bits and no Status Register-2.
-   * Flash devices with Status Register protect bits SRP0 and SRP1 may use them
+   * Flash memory with Status Register protect bits SRP0 and SRP1 may use them
      to disable the pin feature /WP.
    * There may even be those that support volatile and not non-volatile
 
@@ -57,11 +57,11 @@
    * If QE is S9, then SRP0 and SRP1 are available.
    * When QE is S6 there is often no Status Register-2.
      Assumes no SRP0 or SRP1 and write zero to those bits.
-   * Flash supports non-volatile Status Register-1 with write enable CMD 06h
+   * Flash memory supports non-volatile Status Register-1 with write enable CMD 06h
    * If volatile Status Register is supported, then expects write enable CMD 50h
-   * A Flash with only non-volatile Status Register bits is of concern due to
-     the risk of bricking a device. Once detected, the automated analyze will
-     fail/stop. To overide, use the hotkey menu to select the capitalized
+   * A flash memory with only non-volatile Status Register bits is of concern
+     due to the risk of bricking a device. Once detected, the automated analyze
+     will fail/stop. To overide, use the hotkey menu to select the capitalized
      analyze options 'A' or 'B'.
    * Status Register must not have any OTP bits set. This can break the tests.
    * SFDP is not required or used at this time.
@@ -96,7 +96,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // FlashDiscovery - A list of discovered characteristics that may help guide
-// configuring the SPI Flash to disable the pin functions /WP and /HOLD.
+// configuring the SPI flash memory to disable the pin functions /WP and /HOLD.
 //
 struct FlashDiscovery {
   uint32_t device = 0;
@@ -207,12 +207,12 @@ void suggestedReclaimFn() {
       "////////////////////////////////////////////////////////////////////////////////\n");
     if (builtin) {
       Serial.PRINTF(
-        "// No additional code is needed to support this flash chip; however,\n"
+        "// No additional code is needed to support this flash memory; however,\n"
         "// the example template would look like this:\n"
         "//\n");
     } else {
       Serial.PRINTF(
-        "// To add support for your new flash chip, copy/paste the example code\n"
+        "// To add support for your new flash memory, copy/paste the example code\n"
         "// below into a file in your sketch folder.\n"
         "//\n");
     }
@@ -221,7 +221,7 @@ void suggestedReclaimFn() {
     if (builtin) {
       Serial.PRINTF("\n"
         "Caution: inconsistency detected. Analyze failed to find a configuration for\n"
-        "the flash chip, yet the manufacturer ID matches one we support. There are 11\n"
+        "the flash memory, yet the manufacturer ID matches one we support. There are 11\n"
         "banks of 128 manufacturers. It may be the result of an ID collision.\n");
     } else {
       Serial.PRINTF_LN("No clear solution");
@@ -301,7 +301,7 @@ void setup() {
   delay(200);
   Serial.PRINTF_LN(
     "\r\n\r\n"
-    "Analyze Flash for reclaiming GPIO9 and GPIO10 support");
+    "Analyze Flash Memory for reclaiming GPIO9 and GPIO10 support");
   printSR321("  ", true);
   fd_state.device = printFlashChipID("  ");
 

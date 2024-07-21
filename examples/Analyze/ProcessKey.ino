@@ -16,7 +16,7 @@
 /*
 Hotkeys used for scripting "Analyze"
 
-Analyze Flash device properties
+Analyze flash memory properties
   'a' with bias toward S9 for QE and  'A' risky option to force run when
       volatile Status Register is not available.
   'b' with strong bias toward S6 for QE and  'B' risky option to force run when
@@ -133,7 +133,7 @@ bool confirmWelBit() {
 // write operation. Once WEL is set, the next write instruction will clear it.
 // If the write instruction is not valid, the WEL bit is still set. We rely on
 // WEL bit left on when a status register is not supported. Or the bit length of
-// the instruction is wrong for this Flash device.
+// the instruction is wrong for this flash memory.
 //
 // Thus we can detect if the register exist and the required length of the write.
 //
@@ -235,11 +235,11 @@ static bool clearSR21(bool _non_volatile) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Generalized Flash Status Register modify bit n function
+// Generalized Flash Status Register modify bit in function
 //   bit_pos       bit position, 0 - 15
 //   val           bit value 0, 1
-//   _non_volatile  non_volatile_bit use non-volatile Flash status register
-//                 volatile_bit use volatile Flash status register
+//   _non_volatile  non_volatile_bit use non-volatile Flash Status Register
+//                 volatile_bit use volatile Flash Status Register
 //
 // prerequisites
 //   fd_state.has_8bw_sr2
@@ -388,7 +388,7 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
 
   // Reset Flash Discovery states
   resetFlashDiscovery();
-  Serial.PRINTF_LN("\n%s: Analyze Flash and discover characteristics, hint: '%u', safety: %s.",
+  Serial.PRINTF_LN("\n%s: Analyze flash memoryand discover characteristics, hint: '%u', safety: %s.",
     __func__, hint, (saferMode) ? "on" : "off");
 
   fd_state.device = printFlashChipID("  ");
@@ -400,9 +400,10 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
   pinMode(10u, OUTPUT);
 
   // This should not be necessary; however, our analysis depends on WEL working
-  // a certain way. This confirms the Flash works the way we think it does.
+  // a certain way. This confirms that the flash memory works the way we think
+  // it does.
   Serial.PRINTF_LN("\n"
-    "%s: Check Flash support for the Write-Enable-Latch instructions,\n"
+    "%s: Check flash support for the Write-Enable-Latch instructions,\n"
     "  Enable 06h and Disable 04h", __func__);
   if (confirmWelBit()) {
     Serial.PRINTF_LN("  %ssupported", "");
@@ -563,7 +564,7 @@ bool check_QE_WP_SxFF() {
     fd_state.WP = false;
     Serial.PRINTF_LN("  Feature pin function /WP disabled or not present on this part.");
     if (fd_state.has_8bw_sr2) {
-      Serial.PRINTF_LN("* However, check if the Flash supports SRP1 and SRP0 this would confuse the results\n"
+      Serial.PRINTF_LN("* However, check if the flash memory supports SRP1 and SRP0 this would confuse the results\n"
                        "* when using QE/S6. Assuming these combinations exist.");
     }
   } else {
@@ -594,7 +595,7 @@ bool check_QE_WP_S6() {
     fd_state.WP = false;
     Serial.PRINTF_LN("  Feature pin function /WP not detected on this part.");
     if (fd_state.has_8bw_sr2) {
-      Serial.PRINTF_LN("* However, check if the Flash supports SRP1 and SRP0 this would confuse the results\n"
+      Serial.PRINTF_LN("* However, check if the flash memory supports SRP1 and SRP0 this would confuse the results\n"
                        "* when using QE/S6. Assuming these combinations exist.");
     }
   } else
@@ -863,7 +864,7 @@ bool processKey(const int key) {
         }
         bool set_QE = ('Q' == key) || ('E' == key);
         Serial.PRINTF_LN(
-          "%s=%u bit in %svolatile flash status register, SR321 0x%06X",
+          "%s=%u bit in %svolatile Flash Status Register, SR321 0x%06X",
           "Update QE", (set_QE) ? 1u : 0u, (_non_volatile) ? "non-" : "", status);
         pass = false;
         if (set_QE) {

@@ -18,6 +18,7 @@ boards. Boards that support SPI Mode: "QIO" should also work with SPI Mode:
 Mode: "DIO" might work with `reclaim_GPIO_9_10()` as well.
 
 ## Pin Name Clarifications and Terms:
+
 * GPIO9, /HOLD, Flash SD3, Espressif SD_D2, and IO<sub>3</sub> all refer to the
 same connection, but from different perspectives.
 * GPIO10, /WP, Flash SD2, Espressif SD_D3, and IO<sub>2</sub> all refer to the
@@ -28,9 +29,11 @@ the GPIO has the pin. You alter this assignment when you call `pinMode`. Example
 `pinMode(9, OUTPUT)` connects to a GPIO output function or `pinMode(9, INPUT)`
 connects to a GPIO input function.
 * Quad Enable, QE, is a bit in the Flash Status Register. When QE is set, pin
-functions /WP[<sup>1</sup>](https://github.com/mhightower83/Arduino-ESP8266-misc/wiki/Pins-GPIO9-and-GPIO10/#1-nuance)
-and /HOLD are disabled. This allows the Chip to reuse those pins in SPI Modes
-QIO or QOUT without creating conflicts.
+functions /WP and /HOLD are disabled. This allows the Chip to reuse those pins
+in SPI Modes QIO or QOUT without creating conflicts.
+* SRP1 and SRP0 refer to Status Register Protect-1 and Status Register
+Protect-0. Not all flash memory implement these bits; however, when they do,
+SRP1:SRP0 may implement an ignore /WP function.
 * SR1, SR2, and SR3 refer to 8-bit SPI Status Registers 1, 2, and 3.
 * S6, S9, and S15 refer to bits in the SPI Flash Status Registers. SR1 bits
 0 - 7 are S0 - S7. SR2 bits 0 - 7 are S8 - S17.
@@ -38,6 +41,7 @@ QIO or QOUT without creating conflicts.
 ## A Guide to making GPIO9 and GPIO10 work
 
 ### What is the hardware and NONOS SDK expecting?
+
 Espressif's [SPI Flash Modes](https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/spi-flash-modes.html)
 provides good background knowledge of supported Flash Modes and the
 [FAQ](https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/spi-flash-modes.html#frequently-asked-questions)
@@ -85,36 +89,30 @@ On an 8-pin SPI Flash, two of the pins function as either /WP (Write Protect)
 and /HOLD or two data pins SD2 and SD3 when in a Quad-data mode. When QE is
 clear the pin functions /WP and /HOLD are enabled. If the /HOLD pin is held
 `LOW`, the Flash is put on hold and its output lines float. If /HOLD is `LOW`
-too long, a WDT Reset will occur. When QE is set, the pin functions /WP[<sup>1</sup>](https://github.com/mhightower83/Arduino-ESP8266-misc/wiki/Pins-GPIO9-and-GPIO10/#1-nuance)
-and /HOLD are disabled and those physical pins become SD2 and SD3 when Quad
+too long, a WDT Reset will occur. When QE is set, the pin functions /WP and
+/HOLD are disabled and those physical pins become SD2 and SD3 when Quad
 transfers are made, which only occurs with a quad Flash instruction. Otherwise,
 the pins float and are ignored by the Flash.
 
 By selecting `SPI Flash Mode: "DIO"` for our Sketch build, we have the SPI0
-controller setup for DIO operations thus no Quad Flash instructions will be
-used. In this ideal case, we set the volatile copy of the QE bit, before calling
+controller setup for DIO operations. Thus, the quad-flash instructions are not
+used. In this ideal case, we set the volatile copy of the QE bit before calling
 `pinMode()` to configure GPIO9 and GPIO10 for the Sketch. By setting the QE bit
-in the Flash Status Register, we disable the pin functions /WP[<sup>1</sup>](https://github.com/mhightower83/Arduino-ESP8266-misc/wiki/Pins-GPIO9-and-GPIO10/#1-nuance)
-and /HOLD so that no crash will occur from reassigning ESP8266's mux pin from
-/HOLD to GPIO9 or /WP to GPIO10. The SPI Flash memory pins for /WP and /HOLD are
-still connected; however, they stay in the Float state because the SPI0
-controller is _not_ configured to use Quad instructions.
+in the Flash Status Register, we disable the pin functions /WP and /HOLD so that
+no crash will occur from reassigning ESP8266's mux pin from /HOLD to GPIO9 or
+/WP to GPIO10. The SPI Flash memory pins for /WP and /HOLD are still connected;
+however, they stay in the Float state because the SPI0 controller is _not_
+configured to use Quad instructions. For some flash devices to ignore the /WP
+pin, both SRP1 and SRP0 must be set to 0. I find some datasheets to be confusing
+on this point.
 
 This is for the ideal case where an ESP8266 Module works well with all SPI Flash
 Modes, QIO, QOUT, DIO, and DOUT. While we don't use QIO or QOUT mode, a device
 that functions with those options is more likely to support turning off pin
 functions /WP and /HOLD in a way we are familiar with.
 
-#### <sup>1</sup> Nuance
-Not all Flash devices that claim to disable pin function /WP with QE=1, fully do
-so. To fully ignore the /WP pin, some Flash require SRP1 and SRP0 set to 0. This
-was my case with BergMicro, Winbond, and XMC Flash; however, GigaDevice worked
-as I expected. I must be reading something, into the datasheet, that is not
-there. From what I have seen so far except for the QE bit, it would be best that
-all bits in SR1 and SR2 are zero.
-
-
 ## Two main steps for using this library
+
 1. Run the "Analyze" example on your module or development board. It will
    evaluate if the SPI flash memory on your board supports turning off pin
    functions /WP and /HOLD. "Analyze" will also confirm if builtin support is
