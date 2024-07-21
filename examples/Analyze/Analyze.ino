@@ -100,17 +100,17 @@
 //
 struct FlashDiscovery {
   uint32_t device = 0;
-  bool S9 = false;
-  bool S6 = false;
-  bool WP = false;                // pin function /WP exist
+  bool S9 = false;                // Proposed/discovered QE bit possition
+  bool S6 = false;                // " S6 or S9 or neither
+  bool WP = false;                // Pin function /WP exist
   bool has_8bw_sr1 = false;       // When true, WEL write operation succeeded
   bool has_8bw_sr2 = false;       // "
   bool has_8bw_sr3 = false;       // "
   bool has_16bw_sr1 = false;      // "
-  bool has_volatile = false;
-  bool write_QE = false;          // No writable QE bit candidate
-  bool pass_WP = false;
-  bool pass_HOLD = false;
+  bool has_volatile = false;      // Volatile Status Register bit detected
+  bool write_QE = false;          // Writable QE bit candidate, S9 or S6 is set
+  bool pass_WP = false;           // /WP disabled - Test results
+  bool pass_HOLD = false;         // /HOLD disabled - Test results
 } fd_state;
 
 static uint32_t get_qe_pos() {
@@ -207,12 +207,12 @@ void suggestedReclaimFn() {
       "////////////////////////////////////////////////////////////////////////////////\n");
     if (builtin) {
       Serial.PRINTF(
-        "// No additional code is needed to support this Flash device; however,\n"
+        "// No additional code is needed to support this flash chip; however,\n"
         "// the example template would look like this:\n"
         "//\n");
     } else {
       Serial.PRINTF(
-        "// To add support for your new Flash device, copy/paste the example code\n"
+        "// To add support for your new flash chip, copy/paste the example code\n"
         "// below into a file in your sketch folder.\n"
         "//\n");
     }
@@ -220,9 +220,9 @@ void suggestedReclaimFn() {
   } else {
     if (builtin) {
       Serial.PRINTF("\n"
-        "Caution: inconsistency detected. Analyze failed to find a configuration for the\n"
-        "Flash, yet the manufacturer ID matches one we support. There are 11 banks of\n"
-        "128 manufacturers. It may be the result of an ID collision.\n");
+        "Caution: inconsistency detected. Analyze failed to find a configuration for\n"
+        "the flash chip, yet the manufacturer ID matches one we support. There are 11\n"
+        "banks of 128 manufacturers. It may be the result of an ID collision.\n");
     } else {
       Serial.PRINTF_LN("No clear solution");
     }

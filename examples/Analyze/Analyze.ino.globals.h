@@ -11,9 +11,9 @@
 //
 -DDEBUG_FLASH_QE=1
 
-// Build flag indicates that reclaim_GPIO_9_10() may be called before C++
-// runtime has been called as in preinit(). Works with "-DDEBUG_FLASH_QE=1" to
-// allow debug printing before C++ runtime.
+// A debug build flag for reclaim_GPIO_9_10() when called from preinit().
+// Allows the library to handle early printing before the C++ runtime has been
+// completed. This is for use with the option "-DDEBUG_FLASH_QE=1".
 //
 // -DRECLAIM_GPIO_EARLY=1
 
@@ -35,9 +35,9 @@
 //
 -DDEBUG_FLASH_QE=1
 
-// Build flag indicates that reclaim_GPIO_9_10() may be called before C++
-// runtime has been called as in preinit(). Works with "-DDEBUG_FLASH_QE=1" to
-// allow debug printing before C++ runtime.
+// A debug build flag for reclaim_GPIO_9_10() when called from preinit().
+// Allows the library to handle early printing before the C++ runtime has been
+// completed. This is for use with the option "-DDEBUG_FLASH_QE=1".
 //
 // -DRECLAIM_GPIO_EARLY=1
 

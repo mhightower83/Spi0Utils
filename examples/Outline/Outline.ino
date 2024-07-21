@@ -5,7 +5,7 @@
   See "OutlineCustom.ino.globals.h" for build options.
 
   For urgent GPIO pin 9 and 10 initialization add `-DRECLAIM_GPIO_EARLY=1` to
-  your "OutlineCustom.ino.globals.h" file. For example when using GPIO10 as an
+  your "Outline.ino.globals.h" file. For example when using GPIO10 as an
   INPUT, you may need to initialize early to resolve the issue of two output
   drivers fighting each other. As stated elsewhere, you must include a series
   resistor to limit the virtual short circuit current to the lesser component's

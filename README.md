@@ -114,7 +114,7 @@ there. From what I have seen so far except for the QE bit, it would be best that
 all bits in SR1 and SR2 are zero.
 
 
-### Two main steps for using this library
+## Two main steps for using this library
 1. Run the "Analyze" example on your module or development board. It will
    evaluate if the SPI flash memory on your board supports turning off pin
    functions /WP and /HOLD. "Analyze" will also confirm if builtin support is
@@ -135,6 +135,11 @@ A lot of the code in this library is for evaluating the flash memory once you
 are finished with that, all you need to recover GPIO 9 and 10 is one of three
 main functions. Assuming your flash memory is not already supported by the
 builtin QE handlers.
+
+The function `spi_flash_vendor_cases()` shown in the examples below are part of
+the `reclaim_GPIO_9_10()` call chain. See [example Sketches](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline/Outline.ino)
+for `reclaim_GPIO_9_10()` use and placement.
+
 
 ### 1. `set_S6_QE_bit_WPDis`
 For flash memory with QE or WPDis bit at BIT6:
@@ -245,11 +250,14 @@ system will not run. The GPIO pins are rated for 12ma MAX. When calculating the
 resistor values, between the ESP and the signal source, for computation use the
 one with the smaller current limit.
 
+* Generously adding a series resistor may conflict with the I<sup>2</sup>C
+specification.
+
 * When used as an output, take into consideration that the output will be driven
-high at boot time until pinMode is called. If this poses a problem, additional
-logic may be needed to gate these GPIO pins. (A similar issue exists with other
-GPIOs 0, 1, 2, 3, and 16). Since GPIO15 must be low for the system to boot, this
-could be leveraged to create a master enable/disable gate signal.
+high at boot time until `pinMode()` is called. If this poses a problem,
+additional logic may be needed to gate these GPIO pins. (A similar issue exists
+with other GPIOs 0, 1, 2, 3, and 16). Since GPIO15 must be low for the system to
+boot, this could be leveraged to create a master enable/disable gate signal.
 
 * Not likely an issue; however, the capacitive load of the Flash Chip's /WP and
 /HOLD pins may need to be considered on rare occasions. The datasheets have
