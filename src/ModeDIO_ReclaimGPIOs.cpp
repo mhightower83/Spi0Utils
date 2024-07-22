@@ -18,8 +18,9 @@
 
   To free up the GPIO pins, the SPI Flash device needs to support turning off
   pin functions /WP and /HOLD. This is often controlled through the Quad Enable
-  (QE) bit. Depending on the vendor, it is either at S9 or S6 of the Flash
-  Status Register. Additionally, SRP0 and SRP1 may need setting to 0.
+  (QE) bit; however, some devices require Status Register bits SRP1:SPR0 set to
+  0:0 to completely disable /WP. Depending on the vendor, the QE bit is either
+  at S9 or S6 of the Flash Status Register.
 
   Non-volatile Status Register values are loaded at powerup. When the volatile
   values are set and no power cycling, they stay set across ESP8266 reboots
@@ -77,7 +78,7 @@ XMC - SFDP Revision matches up with XM25QH32B datasheet.
  1. Clears status register-3 on volatile write to register-2. Restores on
     power-up. But not on Flash software reset, opcodes 66h-99h. However, the QE
     bit did refresh to the non-volatile value.
- 2. Accepts 8-bit write register-2 or 16-bit write register-2.
+ 2. Accepts 8-bit write register-2 or 16-bit write register-1.
  3. XM25Q32B and XM25Q32C have different Driver strength tables.
     MFG/Device is not enough to differentiate. Need to use SFDP.
 
@@ -103,8 +104,10 @@ GigaDevice
     Flash in there product offering with PDF files rebadged as ELM.
 
 Winbond
- 1. My new NodeMCU v1.0 board only works with 16-bit write status register-1.
-    It appears, very old inventory is still out there.
+ 1. Newer versions of the Winbond parts support both 16-bit Status Register-1
+    writes and 8-bit SR-1 and SR-2 writes. My new NodeMCU v1.0 board only works
+    with 16-bit write status register-1. It appears, very old inventory is still
+    out there.
 
 EON
  1. EN25Q32C found on an AI Thinker ESP-12F module marked as DIO near antenna.
@@ -143,8 +146,11 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
   A false ID is possible! Be aware of possible collisions. The vendor id is an
   odd parity value. There are a possible 128 manufactures. As of this writing,
   there are 11 banks of 128 manufactures. Our extracted vendor value is one of
-  11 possible vendors. We do not have an exact match. I have not seen any way
-  to ID the bank.
+  11 possible vendors. We do not have an exact match. The only way I have seen
+  to ID the Bank is with SFDP; however, it requires "optional parameter data", a
+  "Parameter ID" that maps to "Bank Number":"Manufacturer ID". I do not have any
+  devices that provide this.
+
   */
   uint32_t vendor = 0xFFu & _id;
   uint32_t type = (_id >> 8u) & 0xFFu;
@@ -295,6 +301,7 @@ bool reclaim_GPIO_9_10() {
   uint32_t _id = alt_spi_flash_get_id(); // works when SDK has not initialized
   DBG_SFU_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
 
+#if DEBUG_FLASH_QE
   if (is_WEL()) {
     // Most likely left over from BootROM's attempt to update the Flash Status Register.
     // Common event for SPI Flash that don't support 16-bit Write Status Register-1.
@@ -303,6 +310,11 @@ bool reclaim_GPIO_9_10() {
     DBG_SFU_PRINTF("  Detected: a previous write failed. The WEL bit is still set.\n");
     spi0_flash_write_disable();
   }
+#else
+  // No requirement for calling spi0_flash_write_disable. The library must guard
+  // against WEL bit left on in order to prevent volatile writes from turning
+  // into non-volatile.
+#endif
 
   // Expand to read SFDP Parameter Version. Use result to differentiate parts.
 

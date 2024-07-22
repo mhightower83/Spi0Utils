@@ -21,7 +21,7 @@
   Currently uses P0 bit for test
 
   Test that pin function /HOLD can be disabled
-  If it can return it worked.
+  If the test passes, the call will return; otherwise, a HWDT reboot occurs.
 
   Notes:
     GPIO9 may work because the SPI Flash chip does not implement a /HOLD. eg. EN25Q32C

@@ -83,7 +83,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
       uint32_t newSR3 = status3;;
       if (get_flash_mhz() > 26) { // >26Mhz?
         // Set the output drive to 100%
-        if (1u == sfdpInfo.parm_major && 0 == sfdpInfo.parm_minor && 9u == sfdpInfo.sz_dw && 1u == sfdpInfo.num_parm_hdrs) {
+        if (1u == sfdpInfo.parm_major && 0u == sfdpInfo.parm_minor && 9u == sfdpInfo.sz_dw && 1u == sfdpInfo.num_parm_hdrs) {
           // Datasheet: Rev M issue date 2018/07/17
           // XMC XM25QH32B
           newSR3 &= ~(SPI_FLASH_SR3_XMC_DRV_MASK << SPI_FLASH_SR3_XMC_DRV_S);
@@ -95,7 +95,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
           newSR3 &= ~(SPI_FLASH_SR3_XMC_DRV_MASK << SPI_FLASH_SR3_XMC_DRV_S);
           newSR3 |= (SPI_FLASH_SR3_XM25QH32C_DRV_100 << SPI_FLASH_SR3_XMC_DRV_S);
         } else
-        if (1u == sfdpInfo.parm_major && 0 == sfdpInfo.parm_minor && 10u == sfdpInfo.sz_dw && 2u == sfdpInfo.num_parm_hdrs) {
+        if (1u == sfdpInfo.parm_major && 0u == sfdpInfo.parm_minor && 10u == sfdpInfo.sz_dw && 2u == sfdpInfo.num_parm_hdrs) {
           // Datasheet: Rev.R Issue Date: 2019/08/23
           // XMC XM25QH64C
           newSR3 &= ~(SPI_FLASH_SR3_XMC_DRV_MASK << SPI_FLASH_SR3_XMC_DRV_S);

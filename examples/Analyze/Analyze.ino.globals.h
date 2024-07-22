@@ -17,8 +17,6 @@
 //
 // -DRECLAIM_GPIO_EARLY=1
 
-// For shareing preinit with BacktraceLog
-// -DSHARE_PREINIT__DEBUG_ESP_BACKTRACELOG="backtaceLog_preinit"
 */
 
 
@@ -41,6 +39,4 @@
 //
 // -DRECLAIM_GPIO_EARLY=1
 
-// For shareing preinit with BacktraceLog
--DSHARE_PREINIT__DEBUG_ESP_BACKTRACELOG="backtaceLog_preinit"
 */

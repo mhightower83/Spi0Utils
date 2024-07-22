@@ -433,6 +433,7 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
   // determine if we have volatile bits
   // can we modify non-volatile BP0 in Status Register-1?
   // can we modify volatile BP0 in Status Register-1?
+
   // Clearing all bits should be safe. Setting is when we can get into trouble
   if (! clearSR21(non_volatile_bit)) {
     Serial.PRINTF_LN("* possible OTP issue - analyze aborted");
@@ -450,8 +451,12 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
         "* The safety is on.\n"
         "* No volatile Status Register bits were detected. Without volatile Status Register\n"
         "* bits, continuing with more tests could brick the Flash. To analyze without\n"
-        "* safety, use the capitalized hotkeys 'A' or 'B'.\n"
-        "* For example to rerun with \"hint S6\" enter hotkeys: Bwhp\n");
+        "* safety, use the capitalized hotkeys 'A' or 'B'.\n");
+      if (sr1_16 || sr2_8) {
+        Serial.PRINTF("* For example to rerun with \"hint S%X\" enter hotkeys: %cwhp\n", 9u, 'A');
+      } else {
+        Serial.PRINTF("* For example to rerun with \"hint S%X\" enter hotkeys: %cwhp\n", 6u, 'B');
+      }
       return false;
     }
   }

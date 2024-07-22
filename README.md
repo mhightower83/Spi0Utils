@@ -265,6 +265,38 @@ of a flash input pin is 6pF. This contribution to a circuit should be
 negligible. However, you should include it when calculating the capacitive
 loading for something like I<sup>2</sup>C.
 
+## Notes, Concerns, and Possible Complications
+
+* The BootROM expects a flash chip that supports 16-bit status register writes.
+If the flash memory does not support 16-bit SR-1, this can work to our advantage.
+
+* Not all Flash chips support 16-bit status register writes. eg. GD25Q32E
+
+* Not all devices that support 16-bit register writes support 8-bit status
+register writes to status register-2. eg. BG25Q32A and Winbond W25Q32VS
+
+* Not all devices support a volatile copy of the Status Register. eg. EN25Q32C
+
+* Not all Flash chips support a 2nd status register. For example, the EN25Q32C
+does not have the QE bit as defined by other vendors. It does not have the /HOLD
+signal. And /WP is disabled by 8-bit status register-1 BIT6.
+
+* Excess flash wear is of concern. If the flash memory only supports a
+non-volatile QE bit and supports 16-bit Flash Status Register-1, the
+non-volatile QE bit will get set when `reclaim_GPIO_9_10()` is called and
+cleared at boot by the BootROM. The bit will be flipped back and forth on every
+boot cycle. When a device does not support a 16-bit Flash Status Register-1
+write, the write fails and the bit stays as is and there is no need to rewrite
+QE=1.
+
+* Caution: some bits in the Flash Status Register are for OTP, One Time
+Programming. It is strongly recommended that you identify your flash memory and
+review its datasheet for issues. Also another reason to prefer writing to
+volatile copies of status register bits.
+
+* Each Flash Chip vendor of interest, may need individual initialization code.
+
+
 TODO: When finished, delete from here down
 
 Requires changes from pending PR, https://github.com/esp8266/Arduino/pull/9140#issue-2300765579,
@@ -273,3 +305,18 @@ I use BacktraceLog library in most of my projects and examples.
 If you don't have it installed, just comment out the offending `#include` line.
 
 Includes details from [Reclaiming GPIO9 and GPIO10](https://github.com/mhightower83/Arduino-ESP8266-misc/wiki/Pins-GPIO9-and-GPIO10)
+
+
+<!--
+```
+Convert to rst with:
+
+pandoc README.md --from markdown --to rst -s -o Reclaim_GPIO_9_10.rst
+
+This web site limits conversion per day:
+https://cloudconvert.com/md-to-rst
+
+Better - This one ask for donations:
+https://www.vertopal.com/
+```
+-->

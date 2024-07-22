@@ -68,8 +68,7 @@
 */
 
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <BacktraceLog.h>
+#include <user_interface.h>
 
 #define NOINLINE __attribute__((noinline))
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
