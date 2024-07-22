@@ -1,6 +1,27 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Expand Flash Vendor support for GPIO9 and GPIO10 reclaim
-//
+/*
+  Expand Flash Vendor support for GPIO9 and GPIO10 reclaim
+
+  Shows using the example code generate by Analyze.ino and handle flash devices
+  with individual part revision differences.
+
+  The datasheets for XMC XM25QH32B and XM25QH32C reveal a change in the Status
+  Register-3 values for handling Drive Strength. This example shows how to
+  match up 100% Drive Strength bit settings to the right part.
+
+  Why. Someone found that changing the driver strength to 100% for some troubled
+  boards running with flash at speeds above 26MHz improved reliability. So this
+  example builds on logic from `core_esp8266_flash_quirks.cpp`
+
+  The example does not address if the driver strength needs to be changed only
+  how you could. I have never seen an issue with my boards.
+
+  We use SFDP to aid in differentiating XM25QH32B, XM25QH32C, and XM25QH64C.
+
+  We also take into account, some XMC parts clear SR3 on the first write to a
+  volatile register.
+
+*/
 #include <ModeDIO_ReclaimGPIOs.h>
 #include <SfdpRevInfo.h>
 #include <spi_flash_defs.h>
@@ -92,8 +113,9 @@ bool spi_flash_vendor_cases(uint32_t device) {
 
 #if 1
   // If you do not need the additional boards supported in
-  // __spi_flash_vendor_cases(device); this block can be omitted. The function
-  // __spi_flash_vendor_cases will be omitted by the linker from the build.
+  // __spi_flash_vendor_cases(device); this block can be omitted. When not
+  // referenced, the function __spi_flash_vendor_cases is omitted by the linker
+  // from the build.
 
   if (! success) {
     // Check builtin support
