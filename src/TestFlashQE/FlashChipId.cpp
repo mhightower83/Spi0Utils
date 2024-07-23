@@ -9,9 +9,13 @@
 #ifndef SPI_FLASH_VENDOR_ZBIT
 #define SPI_FLASH_VENDOR_ZBIT      0x5Eu
 #endif
+#ifndef SPI_FLASH_VENDOR_ISSI_2
+#define SPI_FLASH_VENDOR_ISSI_2    0x9Du
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Print popular Flash Chip IDs
+// Manufacturer strings extracted from comments in esp8266/bootloaders/eboot/spi_vendors.h
 struct FlashList {
   uint32_t id;
   const char *vendor;
@@ -35,7 +39,8 @@ struct FlashList {
 {SPI_FLASH_VENDOR_MACRONIX,     /* 0xC2 */    "Macronix (MX)"},
 {SPI_FLASH_VENDOR_NANTRONICS,   /* 0xD5 */    "Nantronics, missing prefix"},
 {SPI_FLASH_VENDOR_PMC,          /* 0x9D */    "PMC, missing 0x7F prefix"},
-// {SPI_FLASH_VENDOR_ISSI_2,       /* 0x9D */    "Integrated Silicon Solution (ISSI)"}, // Bank2
+// Usage found in the RTOS_SDK has ISSI as 0x9D
+{SPI_FLASH_VENDOR_ISSI_2,       /* 0x9D */    "Integrated Silicon Solution (ISSI)"}, // Bank2
 {SPI_FLASH_VENDOR_PUYA,         /* 0x85 */    "Puya semiconductor (shanghai) co. ltd"},
 {SPI_FLASH_VENDOR_SANYO,        /* 0x62 */    "Sanyo"},
 {SPI_FLASH_VENDOR_SHARP,        /* 0xB0 */    "Sharp"},

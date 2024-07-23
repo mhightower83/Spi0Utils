@@ -102,14 +102,19 @@ in the Flash Status Register, we disable the pin functions /WP and /HOLD so that
 no crash will occur from reassigning ESP8266's mux pin from /HOLD to GPIO9 or
 /WP to GPIO10. The SPI Flash memory pins for /WP and /HOLD are still connected;
 however, they stay in the Float state because the SPI0 controller is _not_
-configured to use Quad instructions. For some flash devices to ignore the /WP
-pin, both SRP1 and SRP0 must be set to 0. I find some datasheets to be confusing
-on this point.
+configured to use Quad instructions.
 
 This is for the ideal case where an ESP8266 Module works well with all SPI Flash
 Modes, QIO, QOUT, DIO, and DOUT. While we don't use QIO or QOUT mode, a device
 that functions with those options is more likely to support turning off pin
 functions /WP and /HOLD in a way we are familiar with.
+
+For some flash devices to ignore the /WP pin, SRP1 and SRP0 must also be set
+to 0. SRP1:SRP0 are often in the zero state after boot with `SPI Flash Mode:
+"DIO"`, which may explain why some people experience GPIO10 working and GPIO9
+crashing. I find some datasheets confusing on the requirements of QE, SRP1, and
+SRP0 to meet our goal, and the requirements will also differ between
+manufacturers.
 
 ## Two main steps for using this library
 
@@ -293,6 +298,12 @@ QE=1.
 Programming. It is strongly recommended that you identify your flash memory and
 review its datasheet for issues. Also another reason to prefer writing to
 volatile copies of status register bits.
+
+* I often rely on RTOS_SDK for insight when the NONOS_SDK does not provide the
+details needed. With info from [flash_qio_mode.c](https://github.com/espressif/esp-idf/blob/bdb9f972c6a1f1c5ca50b1be2e7211ec7c24e881/components/bootloader_support/bootloader_flash/src/flash_qio_mode.c#L37-L54),
+I found an issue; it shows XM25QU64A as having QE/S6 while the datasheet I
+downloaded says it is QE/S9. There is no substitute for testing on real
+hardware.
 
 * Each Flash Chip vendor of interest, may need individual initialization code.
 

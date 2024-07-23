@@ -41,5 +41,8 @@ bool __spi_flash_vendor_cases(uint32_t _id);
 #ifndef SPI_FLASH_VENDOR_ZBIT
 #define SPI_FLASH_VENDOR_ZBIT      0x5Eu
 #endif
+#ifndef SPI_FLASH_VENDOR_ISSI_2
+#define SPI_FLASH_VENDOR_ISSI_2    0x9Du
+#endif
 
 #endif // EXPERIMENTAL_MODE_DIO_RECLAIM_GPIOS_H

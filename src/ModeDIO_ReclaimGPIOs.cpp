@@ -244,11 +244,21 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
 
 #if 0
     // Not tested, block for now
-    // This are the two QE/S6 Flash vendors the NONOS_SDK checks for.
-    case SPI_FLASH_VENDOR_PMC:        // 0x9D aka ISSI - Does not support volatile
+    // These are two QE/S6 Flash vendors the NONOS_SDK checks for.
+    // Tests are based on RTOS_SDK code
+    //   https://github.com/espressif/esp-idf/blob/bdb9f972c6a1f1c5ca50b1be2e7211ec7c24e881/components/bootloader_support/bootloader_flash/src/flash_qio_mode.c#L37-L54
+    case SPI_FLASH_VENDOR_ISSI_2:     // 0x9D (confusable with PMC) - Does not support volatile
+      if (0x40u == (0xCFu & type)) {
+        // Status: no hardware testing
+        success = set_S6_QE_bit_WPDis(non_volatile_bit);
+      }
+      break;
+
     case SPI_FLASH_VENDOR_MACRONIX:   // 0xC2
-      // Status: no hardware testing
-      success = set_S6_QE_bit_WPDis(non_volatile_bit);
+      if (0x20u == type) {
+        // Status: no hardware testing
+        success = set_S6_QE_bit_WPDis(non_volatile_bit);
+      }
       break;
 #endif
 
