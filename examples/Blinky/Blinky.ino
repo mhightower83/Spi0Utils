@@ -28,9 +28,9 @@ uint32_t last_wink;
 constexpr uint32_t kWinkInterval = 1000u; // 1 sec.
 void blinky() {
   uint32_t current = millis();
-  if (kWinkInterval < current - last_wink) {
+  if (kWinkInterval < (current - last_wink)) {
     last_wink = current;
-    uint8_t on9 = digitalRead(9);
+    uint8_t on9 = digitalRead(9u);
     digitalWrite(10u, on9);
     digitalWrite(9u, (on9) ? LOW : HIGH);
   }
@@ -56,6 +56,7 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(2u, digitalRead(10u)); // WiFi LED tracks state of GPIO10
   if (gpio_9_10_available) {
     blinky();
   }

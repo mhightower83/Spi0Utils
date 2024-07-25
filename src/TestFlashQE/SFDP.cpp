@@ -130,7 +130,7 @@ void printSfdpReport() {
       }
       if (0xFFu == sfdp_param.id_msb && 0x00u == sfdp_param.id_lsb) {
         ETS_PRINTF("\nTable #%u of Basic Parameters\n", i + 1);
-        size_t flash_sz;
+        [[maybe_unused]] size_t flash_sz;
         size_t addr_tbl = sfdp_param.tbl_ptr;
         size_t sz_tbl = sizeof(basic_param);
         ok0 = spi0_flash_read_sfdp(addr_tbl, &basic_param.u32[0], sz_tbl);

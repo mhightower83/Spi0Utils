@@ -1,10 +1,5 @@
 # SPI0 Flash Utilities
 
-## Status: WIP
-* working
-* code reorganizing
-* comments always need updating
-
 This library was created to support reclaiming the use of GPIO pins 9 and 10. A
 lot of operations were generalized and placed in `ModeDIO_ReclaimGPIOs.h`,
 `SpiFlashUtils.h`, and `SpiFlashUtilsQE.h`. This library makes extensive use of
@@ -302,21 +297,10 @@ volatile copies of status register bits.
 * I often rely on RTOS_SDK for insight when the NONOS_SDK does not provide the
 details needed. With info from [flash_qio_mode.c](https://github.com/espressif/esp-idf/blob/bdb9f972c6a1f1c5ca50b1be2e7211ec7c24e881/components/bootloader_support/bootloader_flash/src/flash_qio_mode.c#L37-L54),
 I found an issue; it shows XM25QU64A as having QE/S6 while the datasheet I
-downloaded says it is QE/S9. There is no substitute for testing on real
-hardware.
+downloaded says it is QE/S9 and my ESP12-F module with XMC flash is also QE/S9.
+There is no substitute for testing on real hardware.
 
 * Each Flash Chip vendor of interest, may need individual initialization code.
-
-
-TODO: When finished, delete from here down
-
-Requires changes from pending PR, https://github.com/esp8266/Arduino/pull/9140#issue-2300765579,
-
-I use BacktraceLog library in most of my projects and examples.
-If you don't have it installed, just comment out the offending `#include` line.
-
-Includes details from [Reclaiming GPIO9 and GPIO10](https://github.com/mhightower83/Arduino-ESP8266-misc/wiki/Pins-GPIO9-and-GPIO10)
-
 
 <!--
 ```

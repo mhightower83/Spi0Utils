@@ -220,7 +220,7 @@ void suggestedReclaimFn() {
     if (builtin) {
       Serial.PRINTF("\n"
         "Caution: inconsistency detected. Analyze failed to find a configuration for\n"
-        "the flash memory, yet the manufacturer ID matches one we support. There are 11\n"
+        "the flash memory, yet the manufacturer ID matches one we support. There are 14\n"
         "banks of 128 manufacturers. It may be the result of an ID collision.\n");
     } else {
       Serial.PRINTF_LN("No clear solution");

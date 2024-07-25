@@ -540,7 +540,7 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
   if (! fd_state.write_QE) {
     Serial.PRINTF(
       "* Expectations for success are low; however if the flash memory does\n"
-      "* not have a pin feature /WP and /HOLD, it may work.\n");
+      "* not have the pin features /WP and /HOLD, it may work.\n");
   }
   return true;
 }

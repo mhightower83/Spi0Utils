@@ -20,7 +20,7 @@
 #error Build with either 'Flash Mode: "DIO"' or 'Flash Mode: "DOUT"'
 #endif
 
-#include <SpiFlashUtilsQE.h>
+#include "SpiFlashUtilsQE.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -120,7 +120,7 @@ EON
 ////////////////////////////////////////////////////////////////////////////////
 */
 #include <Arduino.h>
-#include <ModeDIO_ReclaimGPIOs.h>
+#include "ModeDIO_ReclaimGPIOs.h"
 
 #if !defined(SPI_FLASH_VENDOR_MYSTERY_D8)
 #include "FlashChipId_D8.h"
@@ -145,8 +145,8 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
 
   A false ID is possible! Be aware of possible collisions. The vendor id is an
   odd parity value. There are a possible 128 manufactures. As of this writing,
-  there are 11 banks of 128 manufactures. Our extracted vendor value is one of
-  11 possible vendors. We do not have an exact match. The only way I have seen
+  there are 14 banks of 128 manufactures. Our extracted vendor value is one of
+  14 possible vendors. We do not have an exact match. The only way I have seen
   to ID the Bank is with SFDP; however, it requires "optional parameter data", a
   "Parameter ID" that maps to "Bank Number":"Manufacturer ID". I do not have any
   devices that provide this.
