@@ -1,6 +1,6 @@
 /*
   A simple example using the outline example to blink LEDs connected to GPIO9
-  and GPIO10.
+  and GPIO10. Also, the state of GPIO10 is copied to LED_BUILTIN.
 
   Shows reclaiming GPIOs from preinit() or setup().
   See "Blinky.ino.globals.h" for build options.
@@ -39,7 +39,7 @@ void blinky() {
 void setup() {
   Serial.begin(115200u);
   delay(200u);
-  Serial.println("\n\n\nOutline Sketch using 'reclaim_GPIO_9_10()'");
+  Serial.println("\n\n\nBlinky LED Sketch using 'reclaim_GPIO_9_10()'");
 #if ! RECLAIM_GPIO_EARLY
   gpio_9_10_available = reclaim_GPIO_9_10();
   if (gpio_9_10_available) {
@@ -52,11 +52,12 @@ void setup() {
     pinMode(10u, OUTPUT);
   }
 #endif
+  pinMode(LED_BUILTIN, OUTPUT);
   last_wink = millis();
 }
 
 void loop() {
-  digitalWrite(2u, digitalRead(10u)); // WiFi LED tracks state of GPIO10
+  digitalWrite(LED_BUILTIN, digitalRead(10u)); // LED_BUILTIN tracks state of GPIO10
   if (gpio_9_10_available) {
     blinky();
   }

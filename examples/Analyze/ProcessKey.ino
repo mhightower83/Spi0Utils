@@ -394,6 +394,17 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
   fd_state.device = printFlashChipID("  ");
   printSR321("  ", true);
 
+  // We cannot work with a flash chip that shorts /HOLD (or /WP) to +3.3V.
+  Serial.PRINTF_LN("\n"
+    "%s: short circuit tests for GPIO pins 9 and 10.", __func__);
+  fd_state.pass_SC = test_GPIO_pin_short(10u);
+  if (fd_state.pass_SC) {
+    fd_state.pass_SC = test_GPIO_pin_short(9u);
+  }
+  if (! fd_state.pass_SC) {
+    return false;
+  }
+
   // Take control of GPIO10/"/WP" and force high so Status Register (SR) writes
   // are not blocked.
   digitalWrite(10u, HIGH);
@@ -751,6 +762,7 @@ bool processKey(const int key) {
       if (!scripting && pass) {
         Serial.PRINTF_LN("\nTo continue verification, run /WP test, menu 'w'");
       }
+      fd_state.pass_analyze = pass;
       break;
 
     case 'b':   // Safer
@@ -759,6 +771,7 @@ bool processKey(const int key) {
       if (!scripting && pass) {
         Serial.PRINTF_LN("\nTo continue verification, run /WP test, menu 'w'");
       }
+      fd_state.pass_analyze = pass;
       break;
 
     // Use settings found from analyze or those selected previously through the
@@ -787,6 +800,9 @@ bool processKey(const int key) {
 
     case 'p':
       Serial.PRINTF_LN();
+      if (! (fd_state.pass_HOLD && fd_state.pass_WP && fd_state.pass_SC)) {
+        Serial.PRINTF_LN("\nThis may not work. Not all test passed.");
+      }
       printReclaimFn();
       break;
     //
@@ -937,6 +953,15 @@ bool processKey(const int key) {
       printSR321("  ", true);
       break;
 
+    case 's':
+      // GPIO pins 9 and 10 short circuit test
+      Serial.PRINTF_LN("\n"
+        "%s: short circuit tests for GPIO pins 9 and 10.", "menu 's'");
+      pass = test_GPIO_pin_short(10u);
+      if (pass) pass = test_GPIO_pin_short(9u);
+      fd_state.pass_SC = pass;
+      break;
+
     case 't':
       {
         bool _non_volatile = (fd_state.has_volatile) ? volatile_bit : non_volatile_bit;
@@ -944,8 +969,8 @@ bool processKey(const int key) {
           "Checking 'spi_flash_vendor_cases()' for builtin QE bit handler\n");
         Serial.PRINTF_LN("Unroll Status Register changes");
         printSR321("  ", true);
-        digitalWrite(9u, SPECIAL);
-        digitalWrite(10u, SPECIAL);
+        pinMode(9u, SPECIAL);
+        pinMode(10u, SPECIAL);
         clearSR21(non_volatile_bit);
         printSR321("  ");
 
@@ -978,6 +1003,7 @@ bool processKey(const int key) {
       Serial.PRINTF_LN("  f - Print SFDP Data");
       Serial.PRINTF_LN();
       Serial.PRINTF_LN("Tests:");
+      Serial.PRINTF_LN("  s - GPIO pins 9 and 10 short circuit test, included in Analyze");
       Serial.PRINTF_LN("  w - Test /WP   digitalWrite(10, LOW) and write to Flash");
       Serial.PRINTF_LN("  h - Test /HOLD digitalWrite( 9, LOW)");
       Serial.PRINTF_LN("  p - Print 'spi_flash_vendor_cases()' example function");

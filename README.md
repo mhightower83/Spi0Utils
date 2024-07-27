@@ -12,6 +12,27 @@ boards. Boards that support SPI Mode: "QIO" should also work with SPI Mode:
 "DIO" combined with `reclaim_GPIO_9_10()`. Boards that support, at best, SPI
 Mode: "DIO" might work with `reclaim_GPIO_9_10()` as well.
 
+## Quick Start
+
+If this quick approach doesn't work, come back and continue reading.
+
+First, I suggest running the [Analyze](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Analyze/)
+Sketch on your board. It is in the examples folder; however, you shouldn't need
+to make any changes. It is a ready-to-go tool. It will indicate if the library
+has built-in support for your DEV board. If not, it may provide code to add to
+your sketch as a new module. Copy/paste the code fragment to a new file,
+like `CustomVendor.ino`.
+
+Next, look at the example function [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline/Outline.ino)
+to see the basic things you need to add to your project to use GPIO9 and GPIO10.
+
+Optionally, use the [Blinky](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Blinky/Blinky.ino)
+example sketch to establish confidence that this method works for your ESP8266
+board/flash. Connect an LED in series with a current limiting resistor to the
+3.3V rail and GPIO10. The LED will light when GPIO10 is driven LOW. Repeat with
+another LED and resistor to GPIO9. The Blinky sketch will alternately power each
+LED every 1 second.
+
 ## Pin Name Clarifications and Terms:
 
 * GPIO9, /HOLD, Flash SD3, Espressif SD_D2, and IO<sub>3</sub> all refer to the
@@ -144,7 +165,7 @@ For flash memory with QE or WPDis bit at BIT6:
 ```cpp
 bool set_S6_QE_bit_WPDis(bool non_volatile);
 ```
-Example EON flash EN25Q32C, CustomeVendor.ino:
+Example EON flash EN25Q32C, CustomVendor.ino:
 
 ```cpp
 #include <ModeDIO_ReclaimGPIOs.h>
@@ -173,7 +194,7 @@ which will also include boards that support the build option SPI Mode: "QIO":
 bool set_S9_QE_bit__16_bit_sr1_write(bool non_volatile);
 ```
 
-Example Winbond flash 25Q32FVSIG, CustomeVendor.ino:
+Example Winbond flash 25Q32FVSIG, CustomVendor.ino:
 ```cpp
 #include <ModeDIO_ReclaimGPIOs.h>
 
@@ -199,7 +220,7 @@ For flash memory with QE bit at BIT9 and support only 8-bit Status Register writ
 ```cpp
 bool set_S9_QE_bit__8_bit_sr2_write(bool non_volatile);
 ```
-Example GigaDevice flash GD25Q32C, CustomeVendor.ino:
+Example GigaDevice flash GD25Q32C, CustomVendor.ino:
 ```cpp
 #include <ModeDIO_ReclaimGPIOs.h>
 
@@ -300,7 +321,7 @@ I found an issue; it shows XM25QU64A as having QE/S6 while the datasheet I
 downloaded says it is QE/S9 and my ESP12-F module with XMC flash is also QE/S9.
 There is no substitute for testing on real hardware.
 
-* Each Flash Chip vendor of interest, may need individual initialization code.
+* Some flash chips, may need individual initialization code.
 
 <!--
 ```

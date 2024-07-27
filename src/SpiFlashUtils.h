@@ -120,21 +120,6 @@ SpiOpResult spi0_flash_write_disable() {
   return SPI0Command(kWriteDisableCmd, NULL, 0u, 0);
 }
 
-#if 0
-inline
-SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
-  *pStatus = 0u;
-  return SPI0Command(kReadStatusRegister1Cmd, pStatus, 0u, 8u);
-}
-#else
-inline
-SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
-  *pStatus = 0u;
-  // Use the version provided by the SDK - return enums are the same
-  return (SpiOpResult)spi_flash_read_status(pStatus);
-}
-#endif
-
 inline
 SpiOpResult spi0_flash_read_status_register(const size_t idx0, uint32_t *pStatus) {
   *pStatus = 0u;
@@ -151,6 +136,25 @@ SpiOpResult spi0_flash_read_status_register(const size_t idx0, uint32_t *pStatus
   }
   return SPI0Command(cmd, pStatus, 0u, 8u);
 }
+
+#if 0
+inline
+SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
+  return spi0_flash_read_status_register(0, pStatus);
+}
+//D inline
+//D SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
+//D   *pStatus = 0u;
+//D   return SPI0Command(kReadStatusRegister1Cmd, pStatus, 0u, 8u);
+//D }
+#else
+inline
+SpiOpResult spi0_flash_read_status_register_1(uint32_t *pStatus) {
+  *pStatus = 0u;
+  // Use the version provided by the SDK - return enums are the same
+  return (SpiOpResult)spi_flash_read_status(pStatus);
+}
+#endif
 
 inline
 SpiOpResult spi0_flash_read_status_register_2(uint32_t *pStatus) {
@@ -278,6 +282,15 @@ SpiOpResult spi0_flash_chip_erase() {
 SpiOpResult _spi0_flash_read_common(const uint32_t offset, uint32_t *p, const size_t sz, const uint8_t cmd);
 
 inline
+SpiOpResult spi0_flash_read_sfdp(const uint32_t addr, uint32_t *p, const size_t sz) {
+  return _spi0_flash_read_common(addr, p, sz, kReadSFDPCmd);
+}
+
+#if 1
+// Extra flash commands - not all flash support these or support them in the
+// same way. While this is true in general with SPI Flash, it may be more
+// true of these.
+inline
 SpiOpResult spi0_flash_read_unique_id(const uint32_t offset, uint32_t *pUnique16B, const size_t sz) {
   return _spi0_flash_read_common(offset, pUnique16B, sz, kReadUniqueIdCmd);
 }
@@ -298,23 +311,24 @@ SpiOpResult spi0_flash_read_unique_id_128(uint32_t *pUnique16B) {
 }
 
 inline
-SpiOpResult spi0_flash_read_sfdp(const uint32_t addr, uint32_t *p, const size_t sz) {
-  return _spi0_flash_read_common(addr, p, sz, kReadSFDPCmd);
-}
-
-inline
 SpiOpResult spi0_flash_read_secure_register(const uint32_t reg, const uint32_t offset,  uint32_t *p, const size_t sz) {
   // reg range {1, 2, 3}
   return _spi0_flash_read_common((reg << 12u) + offset, p, sz, kReadSecurityRegisterCmd);
 }
+#endif
 
-// Useful when Flash ID is needed before the NONOS_SDK has initialized.
+#if 0
+// Useful when Flash ID is needed before the NONOS_SDK has initialized; however,
+// with current implementation of this libary the earliest we run is preinit().
+// C++ class wrappers of SDK calls may not work; however, direct SDK calls should.
+// alt_spi_flash_get_id() works when SDK has not initialized
 inline
 uint32_t alt_spi_flash_get_id(void) {
   uint32_t _id = 0u;
   SpiOpResult ok0 = SPI0Command(kJedecId, &_id, 0u, 24u);
   return (SPI_RESULT_OK == ok0) ? _id : 0xFFFFFFFFu;
 }
+#endif
 
 };  // namespace experimental {
 

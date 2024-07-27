@@ -302,13 +302,12 @@ bool reclaim_GPIO_9_10() {
   bool success = false;
 
 #if RECLAIM_GPIO_EARLY && DEBUG_FLASH_QE
-  pinMode(1, SPECIAL);
-  uart_buff_switch(0);
+  pinMode(1u, SPECIAL);
+  uart_buff_switch(0u);
 #endif
   DBG_SFU_PRINTF("\n\n\nRun reclaim_GPIO_9_10()\n");
 
-  //+ uint32_t _id = spi_flash_get_id();
-  uint32_t _id = alt_spi_flash_get_id(); // works when SDK has not initialized
+  uint32_t _id = spi_flash_get_id();
   DBG_SFU_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
 
 #if DEBUG_FLASH_QE
@@ -336,16 +335,17 @@ bool reclaim_GPIO_9_10() {
 
   success = spi_flash_vendor_cases(_id);
   spi0_flash_write_disable();
-  DBG_SFU_PRINTF("%sSPI0 signals '/WP' and '/HOLD' were%s disabled.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
+  DBG_SFU_PRINTF("%sSPI0 signals '/WP' and '/HOLD' are%s disabled.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
   DBG_SFU_PRINTF("%sGPIO9 and GPIO10 are%s available.\n", (success) ? "  " : "** ", (success) ? "" : " NOT");
 
   // Set GPIOs to Arduino defaults
   if (success) {
-    pinMode(9, INPUT);
-    pinMode(10, INPUT);
+    pinMode(9u, INPUT);
+    pinMode(10u, INPUT);
   }
 #if RECLAIM_GPIO_EARLY && DEBUG_FLASH_QE
-  pinMode(1, INPUT);      // restore back to default
+  ets_delay_us(12000u);   // Give the TX FIFO a moment to clear
+  pinMode(1u, INPUT);     // restore back to default
 #endif
   return success;
 }

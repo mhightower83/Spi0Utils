@@ -69,6 +69,7 @@
 
 #include <Arduino.h>
 #include <user_interface.h>
+// #include <BacktraceLog.h>
 
 #define NOINLINE __attribute__((noinline))
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
@@ -108,6 +109,8 @@ struct FlashDiscovery {
   bool has_16bw_sr1 = false;      // "
   bool has_volatile = false;      // Volatile Status Register bit detected
   bool write_QE = false;          // Writable QE bit candidate, S9 or S6 is set
+  bool pass_analyze = false;
+  bool pass_SC = false;           // Short Circuit tests on GPIO 9 and 10 passed
   bool pass_WP = false;           // /WP disabled - Test results
   bool pass_HOLD = false;         // /HOLD disabled - Test results
 } fd_state;
@@ -128,6 +131,8 @@ static void resetFlashDiscovery() {
   fd_state.has_16bw_sr1 = false;
   fd_state.has_volatile = false;
   fd_state.write_QE = false;
+  fd_state.pass_analyze = false;
+  fd_state.pass_SC = false;
   fd_state.pass_WP = false;
   fd_state.pass_HOLD = false;
 }
@@ -183,7 +188,8 @@ void printReclaimFn() {
     if (fd_state.S6) {
       Serial.PRINTF_LN("    success = set_S6_QE_bit_WPDis(%svolatile_bit);", (fd_state.has_volatile) ? "" : "non_");
     } else {
-      Serial.PRINTF_LN("    success = true;");
+      Serial.PRINTF_LN("    success = %s;",
+        (fd_state.pass_SC && fd_state.pass_WP && fd_state.pass_HOLD) ? "true" : "false");
     }
     Serial.PRINTF(
       "  }\n"
@@ -201,7 +207,7 @@ void suggestedReclaimFn() {
   // test to confirm that it works.
   bool builtin = processKey('t');
 
-  if (fd_state.pass_HOLD && fd_state.pass_WP) {
+  if (fd_state.pass_HOLD && fd_state.pass_WP && fd_state.pass_SC) {
     Serial.PRINTF("\n"
       "////////////////////////////////////////////////////////////////////////////////\n");
     if (builtin) {

@@ -32,6 +32,9 @@ bool testOutputGPIO9(const uint32_t qe_pos, const bool use_16_bit_sr1, const boo
 // Test - turning off pin feature /WP
 bool testOutputGPIO10(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);
 
+// Test - GPIO pin shorts
+bool test_GPIO_pin_short(uint8_t pin);
+
 #if 0
 // Use to be called from an example; however, not now.
 bool testInput_GPIO9_GPIO10(const uint32_t qe_pos, const bool use_16_bit_sr1, const bool non_volatile, const bool was_preset);

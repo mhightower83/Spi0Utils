@@ -30,10 +30,84 @@
 */
 
 #include <Arduino.h>
+#include <user_interface.h> // system_soft_wdt_feed()
+#include "BootROM_NONOS.h"
 #include <SpiFlashUtils.h>
 #include "WP_HOLD_Test.h"
 #define PRINTF(a, ...)        printf_P(PSTR(a), ##__VA_ARGS__)
 #define PRINTF_LN(a, ...)     printf_P(PSTR(a "\n"), ##__VA_ARGS__)
+
+////////////////////////////////////////////////////////////////////////////////
+// GPIO pins 9 and 10 short circuit test
+/*
+  While testing every ESP8266 module I had, I found one module that Analyze
+  failed to find a QE bit for. It passed WP and HOLD tests without any special
+  bits set; however, it failed to work with Blinky, where the state of GPIO10 is
+  read and written back to LED_BUILTIN. After I isolated the /WP and /HOLD pins
+  of the flash chip, the sketch ran as expected.
+
+  The flash memory has a short between /HOLD (GPIO9) and +3.3V. This module was
+  a poor-quality ESP01 that would only work when flashed with SPI Flash Mode:
+  "DOUT." While this was not a suitable module for GPIO9/10 usage, it
+  illustrates potential issues that may arise with modules that have poorly
+  chosen flash memory. Also, the datasheet I found for the flash memory did not
+  match the behaviors I saw with the part.
+*/
+
+// We need pinMode functionality in IRAM.  GPF is a problem it resides in
+// PROGMEM we have replaced with localGPF.
+// Partial extraction of pinMode from core_esp8266_wiring_digital.cpp -
+//   only intended to handle GPIO9 and GPIO10 with OUTPUT and SPECIAL.
+#define localGPF(p) (*_gpioToFn[(p & 0xF)])
+
+static void IRAM_ATTR pinSpecial(uint32_t pin, uint32_t mode) {
+  volatile uint32_t* const _gpioToFn[16] = { &GPF0, &GPF1, &GPF2, &GPF3, &GPF4, &GPF5, &GPF6, &GPF7, &GPF8, &GPF9, &GPF10, &GPF11, &GPF12, &GPF13, &GPF14, &GPF15 };
+  if (SPECIAL == mode) {
+    GPC(pin) = (GPC(pin) & (0xF << GPCI)); //SOURCE(GPIO) | DRIVER(NORMAL) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
+    GPEC = (1 << pin); //Disable
+    localGPF(pin) = GPFFS(GPFFS_BUS(pin));//Set mode to BUS (RX0, TX0, TX1, SPI, HSPI or CLK depending in the p     40 in)
+    if(pin == 3) {
+      localGPF(pin) |= (1 << GPFPU);//enable pullup on RX
+    }
+  } else
+  if (OUTPUT == mode) {
+    localGPF(pin) = GPFFS(GPFFS_GPIO(pin));//Set mode to GPIO  -
+    GPC(pin) = (GPC(pin) & (0xF << GPCI)); //SOURCE(GPIO) | DRIVER(NORMAL) | INT_TYPE(UNCHANGED) | WAKEUP_ENABLE(DISABLED)
+    GPES = (1 << pin); //Enable
+  } else {
+    panic();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Check for shorted GPIO pins - intended for use with GPIO 9 and 10
+// Because changing the state /HOLD can result in HWDT resets. We need  to guard
+// against the chance the has iCache has a miss. The complete call chain  must
+// be in IRAM. At this time I do not see any need to use Cache_Read_Disable_2 /
+// Cache_Read_Enable_2.
+bool IRAM_ATTR test_GPIO_pin_short(uint8_t pin) {
+  // Cache_Read_Disable_2();
+  uint32_t saved_ps = xt_rsil(15);
+  Wait_SPI_Idle(flashchip);
+
+  digitalWrite(pin, HIGH);
+  pinSpecial(pin, OUTPUT);  // private version of pinMode(pin, OUTPUT);  // is in ICACHE
+  bool pass1 = (HIGH == digitalRead(pin));
+
+  digitalWrite(pin, LOW);
+  bool pass2 = (LOW == digitalRead(pin));
+
+  pinSpecial(pin, SPECIAL); // restore default function
+  xt_wsr_ps(saved_ps);
+  // Cache_Read_Enable_2();
+
+  Serial.PRINTF_LN("%c GPIO%u digitalWrite %s test %s", (pass1) ? ' ' : '*', pin,
+    "HIGH", (pass1) ? "passed" : "failed");
+  Serial.PRINTF_LN("%c GPIO%u digitalWrite %s test %s", (pass2) ? ' ' : '*', pin,
+    "LOW", (pass2) ? "passed" : "failed");
+
+  return pass1 && pass2;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +168,7 @@ uint32_t test_set_SRP1_SRP0_clear_QE([[maybe_unused]] const uint32_t qe_pos, con
     sr21 = ~0u;
   }
 
-  digitalWrite(10u, SPECIAL);
+  pinMode(10u, SPECIAL);
   return sr21;
 }
 
@@ -139,7 +213,7 @@ uint32_t test_clear_SRP1_SRP0_QE(const bool has_8bw_sr2, const bool use_16_bit_s
     sr21 |= (sr2 << 8u);
   }
 
-  digitalWrite(10u, SPECIAL);
+  pinMode(10u, SPECIAL);
   return sr21;
 }
 

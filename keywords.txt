@@ -40,14 +40,9 @@ SPI_write_status	KEYWORD2
 Wait_SPI_Idle	KEYWORD2
 __spi_flash_vendor_cases	KEYWORD2
 _spi0_flash_read_common	KEYWORD2
-alt_spi_flash_get_id	KEYWORD2
 clear_S6_QE_bit_WPDis	KEYWORD2
 clear_S9_QE_bit__16_bit_sr1_write	KEYWORD2
 clear_S9_QE_bit__8_bit_sr2_write	KEYWORD2
-clear_sr1_mask	KEYWORD2
-clear_sr2_mask	KEYWORD2
-clear_sr_mask	KEYWORD2
-flash_gd25q32c_enable_QIO_mode	KEYWORD2
 get_sfdp_revision	KEYWORD2
 is_QE	KEYWORD2
 is_S6_QE_WPDis	KEYWORD2

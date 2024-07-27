@@ -11,6 +11,6 @@
 // Allows the library to handle early printing before the C++ runtime has been
 // completed. This is for use with the option "-DDEBUG_FLASH_QE=1".
 //
-// -DRECLAIM_GPIO_EARLY=1
+-DRECLAIM_GPIO_EARLY=1
 
 */
