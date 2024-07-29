@@ -81,10 +81,11 @@ static void IRAM_ATTR pinSpecial(uint32_t pin, uint32_t mode) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Check for shorted GPIO pins - intended for use with GPIO 9 and 10
-// Because changing the state /HOLD can result in HWDT resets. We need  to guard
-// against the chance the has iCache has a miss. The complete call chain  must
-// be in IRAM. At this time I do not see any need to use Cache_Read_Disable_2 /
-// Cache_Read_Enable_2.
+// Because changing the state of the /HOLD pin, may cause a HWDT resets. We need
+// to guard against the chance that the iCache may have a miss. The complete
+// call chain must be in IRAM. Using IRAM and disabled interrupts should be
+// enough to guard against a flash read. It looks like we don't need the more
+// extream guard of using Cache_Read_Disable_2 / Cache_Read_Enable_2.
 bool IRAM_ATTR test_GPIO_pin_short(uint8_t pin) {
   // Cache_Read_Disable_2();
   uint32_t saved_ps = xt_rsil(15);
@@ -103,8 +104,11 @@ bool IRAM_ATTR test_GPIO_pin_short(uint8_t pin) {
 
   Serial.PRINTF_LN("%c GPIO%u digitalWrite %s test %s", (pass1) ? ' ' : '*', pin,
     "HIGH", (pass1) ? "passed" : "failed");
+  if (! pass1) Serial.PRINTF_LN("* GPIO%u has a %s short", pin, "ground");
+
   Serial.PRINTF_LN("%c GPIO%u digitalWrite %s test %s", (pass2) ? ' ' : '*', pin,
     "LOW", (pass2) ? "passed" : "failed");
+  if (! pass2) Serial.PRINTF_LN("* GPIO%u has a %s short", pin, "Vcc");
 
   return pass1 && pass2;
 }

@@ -369,6 +369,15 @@ bool analyze_SR_BP0(const bool _non_volatile) {
   return false;
 }
 
+bool test_short_circuit_9_10(const char *str) {
+  // GPIO pins 9 and 10 short circuit test
+  Serial.PRINTF_LN("\n"
+    "%s: short circuit tests for GPIO pins 9 and 10.", str);
+  bool pass = test_GPIO_pin_short(10u);
+  if (pass) pass = test_GPIO_pin_short(9u);
+  return pass;
+}
+
 /*
   Analyze Flash Status Registers for possible support for QE.
   Discover which status registers are available and how they need to be accessed.
@@ -394,13 +403,9 @@ bool analyze_SR_QE(const uint32_t hint, const bool saferMode) {
   fd_state.device = printFlashChipID("  ");
   printSR321("  ", true);
 
-  // We cannot work with a flash chip that shorts /HOLD (or /WP) to +3.3V.
-  Serial.PRINTF_LN("\n"
-    "%s: short circuit tests for GPIO pins 9 and 10.", __func__);
-  fd_state.pass_SC = test_GPIO_pin_short(10u);
-  if (fd_state.pass_SC) {
-    fd_state.pass_SC = test_GPIO_pin_short(9u);
-  }
+  // Validate that we have control over the output of the GPIO pins 9 and 10.
+  // We cannot work with a flash chip that shorts /HOLD (or /WP) to +3.3V, etc.
+  fd_state.pass_SC = test_short_circuit_9_10(__func__);
   if (! fd_state.pass_SC) {
     return false;
   }
@@ -955,10 +960,7 @@ bool processKey(const int key) {
 
     case 's':
       // GPIO pins 9 and 10 short circuit test
-      Serial.PRINTF_LN("\n"
-        "%s: short circuit tests for GPIO pins 9 and 10.", "menu 's'");
-      pass = test_GPIO_pin_short(10u);
-      if (pass) pass = test_GPIO_pin_short(9u);
+      pass = test_short_circuit_9_10("menu 's'");
       fd_state.pass_SC = pass;
       break;
 
@@ -1002,7 +1004,7 @@ bool processKey(const int key) {
       Serial.PRINTF_LN("  B - Same as 'b' except less safe uses non-volatile Status Registers");
       Serial.PRINTF_LN("  f - Print SFDP Data");
       Serial.PRINTF_LN();
-      Serial.PRINTF_LN("Tests:");
+      Serial.PRINTF_LN("Isolated test sets:");
       Serial.PRINTF_LN("  s - GPIO pins 9 and 10 short circuit test, included in Analyze");
       Serial.PRINTF_LN("  w - Test /WP   digitalWrite(10, LOW) and write to Flash");
       Serial.PRINTF_LN("  h - Test /HOLD digitalWrite( 9, LOW)");

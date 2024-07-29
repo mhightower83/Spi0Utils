@@ -52,7 +52,7 @@ Protect-0. Not all flash memory implement these bits; however, when they do,
 SRP1:SRP0 may implement an ignore /WP function.
 * SR1, SR2, and SR3 refer to 8-bit SPI Status Registers 1, 2, and 3.
 * S6, S9, and S15 refer to bits in the SPI Flash Status Registers. SR1 bits
-0 - 7 are S0 - S7. SR2 bits 0 - 7 are S8 - S17.
+0 - 7 are S0 - S7. SR2 bits 0 - 7 are S8 - S15.
 
 ## A Guide to making GPIO9 and GPIO10 work
 
