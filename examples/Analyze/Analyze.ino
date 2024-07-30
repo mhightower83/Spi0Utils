@@ -186,7 +186,7 @@ void printReclaimFn() {
       }
     } else
     if (fd_state.S6) {
-      Serial.PRINTF_LN("    success = set_S6_QE_bit_WPDis(%svolatile_bit);", (fd_state.has_volatile) ? "" : "non_");
+      Serial.PRINTF_LN("    success = set_S6_QE_bit__8_bit_sr1_write(%svolatile_bit);", (fd_state.has_volatile) ? "" : "non_");
     } else {
       Serial.PRINTF_LN("    success = %s;",
         (fd_state.pass_SC && fd_state.pass_WP && fd_state.pass_HOLD) ? "true" : "false");

@@ -250,14 +250,14 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
     case SPI_FLASH_VENDOR_ISSI_2:     // 0x9D (confusable with PMC) - Does not support volatile
       if (0x40u == (0xCFu & type)) {
         // Status: no hardware testing
-        success = set_S6_QE_bit_WPDis(non_volatile_bit);
+        success = set_S6_QE_bit__8_bit_sr1_write(non_volatile_bit);
       }
       break;
 
     case SPI_FLASH_VENDOR_MACRONIX:   // 0xC2
       if (0x20u == type) {
         // Status: no hardware testing
-        success = set_S6_QE_bit_WPDis(non_volatile_bit);
+        success = set_S6_QE_bit__8_bit_sr1_write(non_volatile_bit);
       }
       break;
 #endif
@@ -271,7 +271,7 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
         // These will match EN25Q32A, EN25Q32B, EN25Q32C pin 4 NC (DQ3) no /HOLD function
         // EON SPI Flash parts have a WPDis S6 bit in status register-1 for
         // disabling /WP (and /HOLD). This is similar to QE/S9 on other vendor parts.
-        success = set_S6_QE_bit_WPDis(non_volatile_bit);
+        success = set_S6_QE_bit__8_bit_sr1_write(non_volatile_bit);
       }
       // 0x331Cu - Not supported, EN25Q32 no S6 bit
       // 0x701Cu - EN25QH128A might work

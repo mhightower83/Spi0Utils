@@ -38,10 +38,42 @@ namespace experimental {
 // I am concerned about setting OTP on the part and being locked out.
 // The BIT meanings vary too much between vendors and it is extra code.
 //
-// Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
-// to zero without much care we assume they can all be zero at the startup.
+// Maybe need more thought - review spi_flash_check_wr_protect() in
+// https://github.com/espressif/ESP8266_RTOS_SDK/blob/master/components/spi_flash/src/spi_flash.c
+// specificly SPI_*_WRITE_PROTECT_STATUS mask usage checking for write protect bits.
 //
-// TODO factor out as always 0
+// Take away:
+//    1. spi_flash_check_wr_protect() clears any set Block Protect bits
+//       found for a specific flash vendor.
+//    2. I don't see anyone setting Block Protect bits (??)
+//    3. Block Protection and /WP are considered a protection against an
+//       accidental write that might occur during a SPI bus data error.
+//    4. However, if the bus is that unreliable, we would be freqently crashing
+//       as the iCache hardware has no error detection/recovery process that I
+//       am aware of unless you count the HWDT. Perhapse higher quality flash
+//       memory should be used in conjunction with a quit board design.
+//    5. I think we loose little by eliminating the use of /WP signal.
+//       When the QIO option is selected, pin /WP is swapped out for a data pin.
+//
+// QE/S6
+//   Write, block protect related bits at S5 - S2  AKA  BP3 - BP0
+//
+// QE/S9
+//   Write, block protect related bits at S14, S6 - S2  AKA  CMP, BP4 - BP0
+//   Status Register write protection S8:S7, SRP1:SRP0
+//     OTP {1:1}
+//     Vendor dependent, Power-Supply Lock-Down or hardware protected {1:0}
+//       for hardware protected via pin /WP
+//     Software protected {0:0}
+//
+// Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
+// to zero without much care I assume they can all be zero at the startup.
+//
+// So far it looks like our optimum solution calls for SR1 and SR2 to be all
+// zeros with the exception of the QE bit possition.
+//
+// I have not seen a case for not keeping zero.
+// Keep macro for now, maybe later factor out the non-zero path.
 #define PRESERVE_EXISTING_STATUS_BITS 0
 #endif
 
@@ -89,7 +121,7 @@ bool is_WIP(void) {
 // S6, WPDis => pin Write Protect Disable, maybe only on the EN25Q32C
 // S6, on some devices (ISSI, ) is similar to QE at S9 on others.
 inline
-bool is_S6_QE_WPDis(void) {
+bool is_S6_QE(void) {
   bool success = verify_status_register_1(kQES6Bit);
   DBG_SFU_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (success) ? "confirmed" : "NOT");
   return success;
@@ -111,111 +143,19 @@ bool is_spi0_quad(void) {
   return (0u != ((SPICQIO | SPICQOUT) & SPI0C));
 }
 
-// Only for EN25Q32C, earlier version may not work.
-// Maybe add SFDP call to validate EN25Q32C part.
-// see RTOS_SDK/components/spi_flash/src/spi_flash.c
-// Don't rely on that Espressif sample too closely. The data shown for EN25Q16A
-// is not correct. The EN25Q16A and EN25Q16B do no support SFDP.
-[[maybe_unused]] static
-bool set_S6_QE_bit_WPDis(const bool non_volatile) {
-  uint32_t status = 0u;
-  spi0_flash_read_status_register_1(&status);
-  bool is_set = (0u != (status & kQES6Bit));
-  DBG_SFU_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (is_set) ? "confirmed" : "NOT");
-  if (is_set) return true;
+////////////////////////////////////////////////////////////////////////////////
+//
+bool set_S6_QE_bit__8_bit_sr1_write(const bool non_volatile);
+bool set_S9_QE_bit__8_bit_sr2_write(const bool non_volatile);
+bool set_S9_QE_bit__16_bit_sr1_write(const bool non_volatile);
+bool clear_S6_QE_bit__8_bit_sr1_write(const bool non_volatile);
+bool clear_S9_QE_bit__8_bit_sr2_write(const bool non_volatile);
+bool clear_S9_QE_bit__16_bit_sr1_write(const bool non_volatile);
 
-#if PRESERVE_EXISTING_STATUS_BITS
-  status |= kQES6Bit;
-#else
-  // Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
-  // to zero without much care we assume they can all be zero at the startup.
-  status = kQES6Bit;
-#endif
-  // All changes made to the volatile copies of the Status Register-1.
-  DBG_SFU_PRINTF("  Setting %svolatile %s bit.\n", (non_volatile) ? "non-" : "", "S6/QE/WPDis");
-  spi0_flash_write_status_register_1(status, non_volatile);
-  return is_S6_QE_WPDis();
-}
-
-[[maybe_unused]] static
-bool clear_S6_QE_bit_WPDis(bool non_volatile = false) {
-  uint32_t status = 0u;
-  spi0_flash_read_status_register_1(&status);
-  bool not_set = (0u == (status & kQES6Bit));
-  DBG_SFU_PRINTF("  %s bit %s set.\n", "S6/QE/WPDis", (not_set) ? "NOT" : "confirmed");
-  if (not_set) return true;
-
-#if PRESERVE_EXISTING_STATUS_BITS
-  status &= ~kQES6Bit;
-#else
-  // Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
-  // to zero without much care we assume they can all be zero at the startup.
-  status = 0u;
-#endif
-  // All changes made to the volatile copies of the Status Register-1.
-  DBG_SFU_PRINTF("  Clearing %svolatile S6/QE/WPDis bit - 8-bit write.\n", non_volatile ? "non-" : "");
-  spi0_flash_write_status_register_1(status, non_volatile);
-  return (false == is_S6_QE_WPDis());
-}
-
-[[maybe_unused]] static
-bool set_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
-  uint32_t status2 = 0u;
-  spi0_flash_read_status_register_2(&status2);
-  bool is_set = (0u != (status2 & kQES9Bit1B));
-  DBG_SFU_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
-  if (is_set) return true;
-
-#if PRESERVE_EXISTING_STATUS_BITS
-  status2 |= kQES9Bit1B;
-#else
-  // Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
-  // to zero without much care we assume they can all be zero at the startup.
-  status2 = kQES9Bit1B;
-#endif
-  DBG_SFU_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 8u);
-  spi0_flash_write_status_register_2(status2, non_volatile);
-  return is_QE();
-}
-
-[[maybe_unused]] static
-bool set_S9_QE_bit__16_bit_sr1_write(const bool non_volatile) {
-  uint32_t status = 0u;
-  spi0_flash_read_status_registers_2B(&status);
-  bool is_set = (0u != (status & kQES9Bit2B));
-  DBG_SFU_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
-  if (is_set) return true;
-
-#if PRESERVE_EXISTING_STATUS_BITS
-  status |= kQES9Bit2B;
-#else
-  // Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
-  // to zero without much care we assume they can all be zero at the startup.
-  status = kQES9Bit2B;
-#endif
-  DBG_SFU_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 16u);
-  spi0_flash_write_status_registers_2B(status, non_volatile);
-  return is_QE();
-}
 
 #if 0
 // I don't think these are needed anymore
-[[maybe_unused]] static
-void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern) {
-  #if 0
-  // BUGBUG sets WEL
-  uint32_t status = flash_gd25q32c_read_status(reg_0idx);
-  #else
-  uint32_t status = 0u;
-  spi0_flash_read_status_register(reg_0idx, &status);
-  #endif
-  if (pattern & status) {
-    status &= ~pattern;
-    flash_gd25q32c_write_status(reg_0idx, status); // 8-bit status register write
-    // This message should not repeat at next boot
-    DBG_SFU_PRINTF("** One time clear of Status Register-%u bits 0x%02X.\n", reg_0idx + 1, pattern);
-  }
-}
+void clear_sr_mask(uint32_t reg_0idx, const uint32_t pattern);
 inline
 void clear_sr1_mask(const uint32_t pattern) {
   clear_sr_mask(0u, pattern);
@@ -225,49 +165,6 @@ void clear_sr2_mask(const uint32_t pattern) {
   clear_sr_mask(1u, pattern);
 }
 #endif
-
-#if 1
-[[maybe_unused]] static
-bool clear_S9_QE_bit__8_bit_sr2_write(const bool non_volatile) {
-  uint32_t status2 = 0u;
-  spi0_flash_read_status_register_2(&status2);
-  bool is_set = (0u != (status2 & kQES9Bit1B));
-  DBG_SFU_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
-  if (! is_set) return true;
-
-#if PRESERVE_EXISTING_STATUS_BITS
-  status2 &= kQES9Bit1B;
-#else
-  // Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
-  // to zero without much care we assume they can all be zero at the startup.
-  status2 = 0u;
-#endif
-  DBG_SFU_PRINTF("  Clear %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 8u);
-  spi0_flash_write_status_register_2(status2, non_volatile);
-  return (false == is_QE());
-}
-
-[[maybe_unused]] static
-bool clear_S9_QE_bit__16_bit_sr1_write(const bool non_volatile) {
-  uint32_t status = 0u;
-  spi0_flash_read_status_registers_2B(&status);
-  bool is_set = (0u != (status & kQES9Bit2B));
-  DBG_SFU_PRINTF("  %s bit %s set.\n", "QE", (is_set) ? "confirmed" : "NOT");
-  if (! is_set) return true;
-
-#if PRESERVE_EXISTING_STATUS_BITS
-  status &= kQES9Bit2B;
-#else
-  // Since BootROM functions Enable_QMode and Disable_QMode are setting SR bits
-  // to zero without much care we assume they can all be zero at the startup.
-  status = 0u;
-#endif
-  DBG_SFU_PRINTF("  Setting %svolatile %s bit - %u-bit write.\n", (non_volatile) ? "non-" : "", "QE", 16u);
-  spi0_flash_write_status_registers_2B(status, non_volatile);
-  return (false == is_QE());
-}
-#endif
-
 
 };  // namespace experimental {
 

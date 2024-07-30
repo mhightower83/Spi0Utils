@@ -65,6 +65,7 @@ enum {
 //
 // Note NOT all commands listed are universally available on all SPI Flash memory.
 // EN25Q32C noted as an example
+constexpr uint8_t kEonOtpCmd                  = 0x3Au;
 constexpr uint8_t kVolatileWriteEnableCmd     = 0x50u;
 constexpr uint8_t kWriteEnableCmd             = 0x06u;
 constexpr uint8_t kWriteDisableCmd            = 0x04u;

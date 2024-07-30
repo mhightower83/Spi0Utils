@@ -37,20 +37,26 @@ LED every 1 second.
 
 * GPIO9, /HOLD, Flash SD3, Espressif SD_D2, and IO<sub>3</sub> all refer to the
 same connection, but from different perspectives.
+
 * GPIO10, /WP, Flash SD2, Espressif SD_D3, and IO<sub>2</sub> all refer to the
 same connection, but from different perspectives.
+
 * The ESP8266 mux decides if the SPI0 controller has the pin connection or if
 the GPIO has the pin. You alter this assignment when you call `pinMode`. Example
 `pinMode(9, SPECIAL)` assigns the connection to the SPI0 controller. Where,
 `pinMode(9, OUTPUT)` connects to a GPIO output function or `pinMode(9, INPUT)`
 connects to a GPIO input function.
+
 * Quad Enable, QE, is a bit in the Flash Status Register. When QE is set, pin
 functions /WP and /HOLD are disabled. This allows the Chip to reuse those pins
 in SPI Modes QIO or QOUT without creating conflicts.
+
 * SRP1 and SRP0 refer to Status Register Protect-1 and Status Register
 Protect-0. Not all flash memory implement these bits; however, when they do,
 SRP1:SRP0 may implement an ignore /WP function.
+
 * SR1, SR2, and SR3 refer to 8-bit SPI Status Registers 1, 2, and 3.
+
 * S6, S9, and S15 refer to bits in the SPI Flash Status Registers. SR1 bits
 0 - 7 are S0 - S7. SR2 bits 0 - 7 are S8 - S15.
 
@@ -64,18 +70,25 @@ provides good background knowledge of supported Flash Modes and the
 covers when/why they don't work.
 
 The ESP8266EX BootROM expects:
+
 * The Flash to support 16-bit Writes to Flash Status Register-1 using Flash
 instruction 01h. For many newer Flash parts, the datasheets describe this as
 legacy support.
+
 * The Flash has a Quad Enable bit in the Status Register at S9/BIT9. AKA BIT1
 in Status Register-2.
+
 * WEL Write Enable Latch at BIT1 of SR1 and WIP Write In Progress at BIT0 of SR1.
 
 The NONOS SDK is Prepared to handle:
+
 * The above items for BootROM.
+
 * GigaDevice GD25Q32 and GD25Q128 support only 8-bit Write SR1 and SR2; however,
 it does have the QE bit at S9.
+
 * ISSI/PMC Flash with the QE/S6 BIT6 in SR1
+
 * Macronix Flash with the QE/S6 BIT6 in SR1
 
 Based on the `SPI Flash Mode` found in the [Firmware Image Header](https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/firmware-image-format.html#file-header),
@@ -160,10 +173,10 @@ the `reclaim_GPIO_9_10()` call chain. See [Outline](https://github.com/mhightowe
 example sketch for `reclaim_GPIO_9_10()` use and placement.
 
 
-### 1. `set_S6_QE_bit_WPDis`
+### 1. `set_S6_QE_bit__8_bit_sr1_write`
 For flash memory with QE or WPDis bit at BIT6:
 ```cpp
-bool set_S6_QE_bit_WPDis(bool non_volatile);
+bool set_S6_QE_bit__8_bit_sr1_write(bool non_volatile);
 ```
 Example EON flash EN25Q32C, CustomVendor.ino:
 
@@ -176,7 +189,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
   bool success = false;
 
   if (0x301Cu == (device & 0xFFFFu)) {
-    success = set_S6_QE_bit_WPDis(non_volatile_bit);
+    success = set_S6_QE_bit__8_bit_sr1_write(non_volatile_bit);
   }
 
   if (! success) {

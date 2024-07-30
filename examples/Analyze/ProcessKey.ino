@@ -902,7 +902,7 @@ bool processKey(const int key) {
             }
           } else
           if (fd_state.S6) {
-            pass = set_S6_QE_bit_WPDis(_non_volatile);
+            pass = set_S6_QE_bit__8_bit_sr1_write(_non_volatile);
           }
         } else {
           if (fd_state.S9) {
@@ -913,7 +913,7 @@ bool processKey(const int key) {
             }
           } else
           if (fd_state.S6) {
-            pass = clear_S6_QE_bit_WPDis(_non_volatile);
+            pass = clear_S6_QE_bit__8_bit_sr1_write(_non_volatile);
           }
         }
 
