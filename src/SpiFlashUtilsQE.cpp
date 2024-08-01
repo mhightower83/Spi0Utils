@@ -45,7 +45,6 @@ namespace experimental {
 // Of concern in more recent code samples, the EON flash parts are not shown
 // https://github.com/espressif/esp-idf/blob/bdb9f972c6a1f1c5ca50b1be2e7211ec7c24e881/components/bootloader_support/bootloader_flash/src/flash_qio_mode.c#L37-L54
 //
-//? TODO study the datasheet more
 //C I am leaning toward removing this function.
 //
 bool set_S6_QE_bit__8_bit_sr1_write_EN25Q32B_volatile();

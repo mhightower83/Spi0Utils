@@ -52,8 +52,9 @@ namespace experimental {
 //       as the iCache hardware has no error detection/recovery process that I
 //       am aware of unless you count the HWDT. Perhapse higher quality flash
 //       memory should be used in conjunction with a quit board design.
-//    5. I think we loose little by eliminating the use of /WP signal.
-//       When the QIO option is selected, pin /WP is swapped out for a data pin.
+//    5. I think we lose little by eliminating the use of /WP signal. After
+//       all, when the QIO option is selected, pin /WP is swapped out for a data
+//       pin.
 //
 // QE/S6
 //   Write, block protect related bits at S5 - S2  AKA  BP3 - BP0

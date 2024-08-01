@@ -132,7 +132,7 @@ EON
   that modules makers that expose GPIO9 and GPIO10 made an effort to pair the
   ESP8266EX with a SPI Flash that can disable /WP and /HOLD.
 */
-bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_ver) {
+bool __spi_flash_vendor_cases(const uint32_t _id) {
   using namespace experimental;
 
   bool success = false;
@@ -262,6 +262,7 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
       break;
 #endif
 
+#if 0
     case SPI_FLASH_VENDOR_EON:        // 0x1C
       // Status: tested, sealed in ESP-12F module
       // EON EN25Q32C, identification based on datasheet and data matchup
@@ -276,6 +277,7 @@ bool __spi_flash_vendor_cases(const uint32_t _id) { // }, const uint32_t _sfdp_v
       // 0x331Cu - Not supported, EN25Q32 no S6 bit
       // 0x701Cu - EN25QH128A might work
       break;
+#endif
 
     default:
       success = false;

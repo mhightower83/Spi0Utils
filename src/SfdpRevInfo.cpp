@@ -55,4 +55,24 @@ SfdpRevInfo get_sfdp_revision() {
   return rev;
 }
 
+uint32_t* get_sfdp_basic(SfdpRevInfo *rev) {
+  if (nullptr == rev) return nullptr;
+
+  *rev = get_sfdp_revision();
+  if (0u == rev->tbl_ptr) return nullptr;
+
+  size_t addr = rev->tbl_ptr;
+  size_t sz = rev->sz_dw * 4u;
+  uint32_t* dw = (uint32_t*)malloc(sz);
+  if (nullptr == dw) return nullptr;
+
+  memset(dw, 0, sz);
+  if (SPI_RESULT_OK == spi0_flash_read_sfdp(addr, dw, sz)) {
+    return dw;
+  }
+
+  free(dw);
+  return nullptr;
+}
+
 };

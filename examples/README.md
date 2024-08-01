@@ -20,7 +20,8 @@ An outline example demonstrating the use of `reclaim_GPIO_9_10()` which can
 handle more of the less conforming Flash memories. Like GigaDevice GD25QxxC,
 GD25QxxE, and EON EN25Q32C.
 
-Shows reclaiming GPIOs from `preinit()` or `setup()`.
+It shows using a global build conditional `RECLAIM_GPIO_EARLY` to control
+reclaiming GPIOs from `preinit()` or `setup()`.
 
 The hope is this will handle a large percentage of the modules exposing GPIO9
 and 10.
@@ -39,7 +40,15 @@ Similar to "OutlineCustom" above. Shows using the example code generate by
 Analyze.ino to handle flash parts with individual part revision differences.
 Illustrates the use of SFDP data for tailoring flash initialization for each
 revision. Provides an untested hypothetical custom handler in `CustomXMC.ino`
-for `spi_flash_vendor_cases()`.
+for `spi_flash_vendor_cases()`. Reclaims GPIO9 and GPIO10 from `preinit()`.
+
+
+## [OutlineEON](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/OutlineEON)
+
+Similar to "OutlineCustom" above. Shows extending the example code generate by
+Analyze.ino to handle a specific flash part EN25Q32C. Illustrates the use of
+SFDP data. Provides a custom handler for EN25Q32C in `CustomEON.ino` for
+`spi_flash_vendor_cases()`. Reclaims GPIO9 and GPIO10 from `preinit()`.
 
 
 ## [Blinky](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Blinky)

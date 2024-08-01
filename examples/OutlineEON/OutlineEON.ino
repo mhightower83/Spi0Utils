@@ -6,7 +6,7 @@
   See "OutlineXMC.ino.globals.h" for build options.
 
   Additionally shows using the example code generate by Analyze.ino and
-  handling flash devices with individual part revision differences.
+  changes to limit part matching.
 
   This example code is in the public domain.
 */
