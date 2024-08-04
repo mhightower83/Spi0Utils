@@ -309,7 +309,11 @@ bool reclaim_GPIO_9_10() {
 #endif
   DBG_SFU_PRINTF("\n\n\nRun reclaim_GPIO_9_10()\n");
 
+#if (RECLAIM_GPIO_EARLY == 2)
+  uint32_t _id = alt_spi_flash_get_id();
+#else
   uint32_t _id = spi_flash_get_id();
+#endif
   DBG_SFU_PRINTF("  Flash Chip ID: 0x%06X\n", _id);
 
 #if DEBUG_FLASH_QE

@@ -47,11 +47,10 @@ namespace experimental {
 //       found for a specific flash vendor.
 //    2. I don't see anyone setting Block Protect bits (??)
 //    3. Block Protection and /WP are considered a protection against an
-//       accidental write that might occur during a SPI bus data error.
-//    4. However, if the bus is that unreliable, we would be freqently crashing
-//       as the iCache hardware has no error detection/recovery process that I
-//       am aware of unless you count the HWDT. Perhapse higher quality flash
-//       memory should be used in conjunction with a quit board design.
+//       accidental write that might occur during an SPI bus data error.
+//    4. However, if the bus is that unreliable, we would frequently crash as
+//       the iCache hardware has no error detection/recovery process that I am
+//       aware of unless you count the HWDT reset.
 //    5. I think we lose little by eliminating the use of /WP signal. After
 //       all, when the QIO option is selected, pin /WP is swapped out for a data
 //       pin.

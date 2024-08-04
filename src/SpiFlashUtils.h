@@ -318,11 +318,12 @@ SpiOpResult spi0_flash_read_secure_register(const uint32_t reg, const uint32_t o
 }
 #endif
 
-#if 0
-// Useful when Flash ID is needed before the NONOS_SDK has initialized; however,
-// with current implementation of this libary the earliest we run is preinit().
-// C++ class wrappers of SDK calls may not work; however, direct SDK calls should.
-// alt_spi_flash_get_id() works when SDK has not initialized
+#if (RECLAIM_GPIO_EARLY == 2)
+// Use when Flash ID is needed before the NONOS_SDK has initialized; however,
+// with the current implementation of this library, the earliest we run is
+// `preinit()` (RECLAIM_GPIO_EARLY == 1). C++ class wrappers of SDK calls may
+// not work; however, direct SDK calls should. `alt_spi_flash_get_id()` works
+// when SDK has not fully initialized, but ICACHE_READ is enabled.
 inline
 uint32_t alt_spi_flash_get_id(void) {
   uint32_t _id = 0u;
