@@ -42,7 +42,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
   if (sfdp_dw) free(sfdp_dw);
 
   if (! success) {
-    // then try builtin support
+    // then try built-in support
     success = __spi_flash_vendor_cases(device);
   }
   return success;

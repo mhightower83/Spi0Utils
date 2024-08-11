@@ -1,13 +1,24 @@
 # SPI0 Flash Utilities
 
 An Arduino ESP8266 library that supports reclaiming the use of GPIO pins 9 and
-10 on ESP8266 modules that expose access to those pins. You must build with SPI
+10 on ESP8266 modules that expose access to those pins. The build requires SPI
 Flash Mode "DIO" or "DOUT".
+
+I expect this solution to work for the ESP-12F Module and the NodeMCU 1.0 DEV
+board; however, it may depend on the SPI flash chip the module manufacturer
+selected. The few I have are working. I assume board vendors that expose GPIO
+pins 9 and 10 have made wise choices with their flash chip selection and allow
+the pin functions /WP and /HOLD to be disabled. I am cautiously optimistic about
+this solution. Confidence will only come with experience.
 
 Various operations were generalized and placed in `ModeDIO_ReclaimGPIOs.h`,
 `SpiFlashUtils.h`, and `SpiFlashUtilsQE.h`. This library extensively uses
 `experimental::SPI0Command` in the Arduino ESP8266 core, which allows our
 initialization code to stay out of IRAM.
+
+This library requires the Arduino ESP8266 GIT commit
+c2f136515a396be1101b261fe7b71e137aef0dce or the current GIT from Arduino
+ESP8266. Use Release 3.2.3 or better when it becomes available.
 
 Not all flash memory is compatible with this feature. When successful, the SPI
 flash memory will ignore the flash memory pins connected to GPIO9 and GPIO10.
@@ -61,13 +72,12 @@ functions /WP and /HOLD are disabled. This allows the Chip to reuse those pins
 in SPI Modes QIO or QOUT without creating conflicts.
 
 * SRP1 and SRP0 refer to Status Register Protect-1 and Status Register
-Protect-0. Not all flash memory implement these bits; however, when they do,
-SRP1:SRP0 may implement an ignore /WP function.
+Protect-0. Not all flash memories have these bits. When they do, the pair
+SRP1:SRP0 (0:0) may implement an ignore /WP function.
 
 * SR1, SR2, and SR3 refer to 8-bit SPI Status Registers 1, 2, and 3.
 
-* S6, S9, and S15 refer to bits in the SPI Flash Status Registers. SR1 bits
-0 - 7 are S0 - S7. SR2 bits 0 - 7 are S8 - S15.
+* Usage of S6, S9, and S15 refers to a QE bit placement in the SPI Flash Status Registers. SR1 bits 0 - 7 are S0 - S7. SR2 bits 0 - 7 are S8 - S15.
 
 ## A Guide to making GPIO9 and GPIO10 work
 
@@ -176,7 +186,7 @@ manufacturers.
 See [example Sketches](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples#readme)
 for more details.
 
-## Three common QE flash cases
+## Four common QE flash cases
 
 A lot of the code in this library is for evaluating the flash memory once you
 are finished with that, all you need to recover GPIO 9 and 10 is one of three
@@ -208,7 +218,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
   }
 
   if (! success) {
-    // then try builtin support
+    // then try built-in support
     success = __spi_flash_vendor_cases(device);
   }
   return success;
@@ -236,7 +246,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
   }
 
   if (! success) {
-    // then try builtin support
+    // then try built-in support
     success = __spi_flash_vendor_cases(device);
   }
   return success;
@@ -262,19 +272,46 @@ bool spi_flash_vendor_cases(uint32_t device) {
   }
 
   if (! success) {
-    // then try builtin support
+    // then try built-in support
     success = __spi_flash_vendor_cases(device);
   }
   return success;
 }
 ```
 
+### 4. `success = true;`
+Flash memory that does not implement either pin function WP or HOLD, no special
+handling is required.
+
+Example:
+```cpp
+#include <ModeDIO_ReclaimGPIOs.h>
+
+extern "C"
+bool spi_flash_vendor_cases(uint32_t device) {
+  using namespace experimental;
+  bool success = false;
+
+  // TODO find a vendor that does this. EON omits /HOLD.
+  if (0x????u == (device & 0xFFFFu)) {
+    success = true;
+  }
+
+  if (! success) {
+    // then try built-in support
+    success = __spi_flash_vendor_cases(device);
+  }
+  return success;
+}
+```
+
+
 If the flash memory supports volatile Status Register bits, use `volatile_bit`
 for the argument. Otherwise, use non_volatile_bit. A concern with using the
 `non_volatile_bit` is wear on the flash. For the cases where the BootROM cannot
-change the QE bit, it remains set or clear. Often seen with QE/S6 or the flash
-only supports 8-bit Status Register writes. The BootROM can only handle QE/S9
-and 16-bit Status Register-1 writes.
+change the QE bit, it remains set or clear. Often observed with QE/S6 or the
+flash only supports 8-bit Status Register writes. The BootROM can only handle
+QE/S9 and 16-bit Status Register-1 writes.
 
 ## Review and Considerations
 * No generic solution for all modules. There are too many partially compatible

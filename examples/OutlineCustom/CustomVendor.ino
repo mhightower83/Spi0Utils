@@ -37,7 +37,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
   // __spi_flash_vendor_cases(device); this block can be omitted.
   // Then __spi_flash_vendor_cases will be omitted a link time.
   if (! success) {
-    // Check builtin support
+    // Check built-in support
     success = __spi_flash_vendor_cases(device);
   }
 #endif

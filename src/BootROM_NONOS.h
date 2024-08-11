@@ -32,24 +32,24 @@ TODO: move relavent parts to "esp8266_undocumented.h"
 extern "C" {
 #endif
 
-// BootROM
-//D int SPI_write_enable(SpiFlashChip *chip);
-
+////////////////////////////////////////////////////////////////////////////////
+// BootROM APIs
+//
 /*
   Writes to "status register-1" or "status register-1 and status register-2"
-  when
+  when the flash memory supports 16-bit status register writes.
 */
 int SPI_write_status(SpiFlashChip *chip, uint32_t status);
 /*
-  Uses builtin Status Register-1 read.
+  Uses SPI0 controller's built-in Status Register-1 read.
   Waits for cmd register to clear
-  Reads data register and and with status mask provided via 'SpiFlashChip *chip'
+  Reads data register and ANDs with status mask provided via 'SpiFlashChip *chip'
   Returns result in status
 
-  Default assumption is the Flash Chip will return a 16-bit value
-  I am not sure the builtin 'Status Register-1' read will read more than 8 bits.
-  And, if so not all vendors support such an option. The datasheets I have seen
-  indicate that the 8-bit value would repeat.
+  There appears to be an assumption that the Flash Chip will return a 16-bit
+  value. I am not sure the built-in 'Status Register-1' read will read more than
+  8 bits. If it does, not all vendors support such an option. The datasheets I
+  have seen indicate that the 8-bit value would repeat.
 */
 int SPI_read_status(SpiFlashChip *chip, uint32_t *status);
 
@@ -69,35 +69,42 @@ int SPI_read_status(SpiFlashChip *chip, uint32_t *status);
 */
 
 /*
-To use Boot ROM's Enable_QMode or Disable_QMode functions, the Flash Chip has to
-have a 2nd Status register with S9 bit for QE. At boot, for a Flash Mode byte
-set to QIO and QOUT, Enable_QMode is called. For all other values, Disable_QMode
-is called.
+  To use Boot ROM's Enable_QMode or Disable_QMode functions, the Flash Chip has
+  to have a 2nd Status register with S9 bit for QE. At boot, for a Flash Mode
+  byte set to QIO and QOUT, Enable_QMode is called. For all other values,
+  Disable_QMode is called.
 
-EON's EN25Q32B does not have a 2nd Status Register. IF it is possible for the
-ESP8266 to use the EN25Q32B in QIO mode, Enable_QMode or Disable_QMode will not
-be a part of that solution.
+  EON's EN25Q32B does not have a 2nd Status Register. IF it is possible for the
+  ESP8266 to use the EN25Q32B in QIO mode, Enable_QMode or Disable_QMode will
+  not be a part of that solution.
 
-Enable_QMode
-  * Sets QIO or QOUT in SPI CTRL register
-  * Sets SPI_WRSR_2B in SPI_CTRL_REG changing Status Write to 16 bits long. This
-    is a legacy support option in Winbond parts. ** It may not be present from
-    other vendors. In this case, look for WEL left set after a Status Write. **
-    Also, a legacy Winbond part would clear status register-2 when you do an
-    8-bit write to status register-1.
-    Note, EON (EN25Q32B) does not have an SR-2 or QE bit like other Flash Chips.
-  * SPI_write_enable followed by
-  * SPI_read_status (only 8-bit result), set QE bit
-  * SPI_write_status 16-bit.
-    ** Any previous bits set in Status Register-2 are lost. **
+  Enable_QMode
+    * Sets QIO or QOUT in SPI CTRL register
+    * Sets SPI_WRSR_2B in SPI_CTRL_REG changing Status Write to 16-bit long.
+      This is a legacy support option in Winbond parts. It may not be present
+      from other vendors. In this case, look for WEL left set after a Status
+      Write. Also, a legacy Winbond part would clear status register-2 when you
+      do an 8-bit write to status register-1.
+      Note, EON (EN25Q32B) does not have an SR-2 or QE bit like other Flash Chips.
+    * SPI_write_enable followed by
+    * SPI_read_status - loops until WEL set
+    * Set QE bit with SPI_write_status 16-bit.
+      ** Clears S0 - S8, S10 - S15 and sets QE/S9 **
 */
 int Enable_QMode(SpiFlashChip *chip);
+/*
+  Disable_QMode, the compliment to Enable_QMode; however, it clears QE by
+  clearing the high 8-bits of the 16-bit status register-1 and keeps the lower
+  8-bits.
+*/
 int Disable_QMode(SpiFlashChip *chip);
 
 // Disables iCache. Use Cache_Read_Enable_New to turn back on.
 void Cache_Read_Disable();
 
+////////////////////////////////////////////////////////////////////////////////
 // NONOS_SDK
+//
 bool spi_flash_issi_enable_QIO_mode();
 bool flash_gd25q32c_enable_QIO_mode();
 uint32_t spi_flash_enable_qmode();
@@ -165,12 +172,6 @@ extern SpiFlashOpResult spi_flash_write_status(uint32_t status16);
   Returns SPI_FLASH_RESULT_OK on success.
 */
 extern SpiFlashOpResult spi_flash_read_status(uint32_t *status);
-
-
-
-
-
-
 
 // Enables iCache.
 // Note, Cache_Read_Disable/Cache_Read_Enable_New clears previously cached data.

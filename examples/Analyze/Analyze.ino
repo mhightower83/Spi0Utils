@@ -84,10 +84,6 @@
 //     don't work as expected. When finished with debugging, remove define to
 //     reduce code and DRAM footprint.
 //
-//  -DRECLAIM_GPIO_EARLY=1 - Build flag indicates that reclaim_GPIO_9_10() may
-//     be called before C++ runtime has been called as in preinit().
-//     Works with -DDEBUG_FLASH_QE=1 to allow debug printing before C++ runtime.
-//
 #include <ModeDIO_ReclaimGPIOs.h>
 #include <SfdpRevInfo.h>
 #include <TestFlashQE/FlashChipId.h>
@@ -195,7 +191,7 @@ void printReclaimFn() {
       "  }\n"
       "\n"
       "  if (! success) {\n"
-      "    // then try builtin support\n"
+      "    // then try built-in support\n"
       "    success = __spi_flash_vendor_cases(device);\n"
       "  }\n"
       "  return success;\n"

@@ -968,7 +968,7 @@ bool processKey(const int key) {
       {
         bool _non_volatile = (fd_state.has_volatile) ? volatile_bit : non_volatile_bit;
         Serial.PRINTF_LN("\n"
-          "Checking 'spi_flash_vendor_cases()' for builtin QE bit handler\n");
+          "Checking 'spi_flash_vendor_cases()' for built-in QE bit handler\n");
         Serial.PRINTF_LN("Unroll Status Register changes");
         printSR321("  ", true);
         pinMode(9u, SPECIAL);
@@ -1009,7 +1009,7 @@ bool processKey(const int key) {
       Serial.PRINTF_LN("  w - Test /WP   digitalWrite(10, LOW) and write to Flash");
       Serial.PRINTF_LN("  h - Test /HOLD digitalWrite( 9, LOW)");
       Serial.PRINTF_LN("  p - Print 'spi_flash_vendor_cases()' example function");
-      Serial.PRINTF_LN("  t - Test builtin/custom 'spi_flash_vendor_cases()'");
+      Serial.PRINTF_LN("  t - Test built-in/custom 'spi_flash_vendor_cases()'");
       Serial.PRINTF_LN();
       Serial.PRINTF_LN("Manual set/clear discovery flags:");
       Serial.PRINTF_LN("%c 8 - Set flags:  8-bits Write Status Register and clear 16-bit SR1", (fd_state.has_16bw_sr1) ? ' ' : '>');

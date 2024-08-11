@@ -16,34 +16,12 @@
 /*
   Reclaim the use of GPIO9 and GPIO10.
 
-  To free up the GPIO pins, the SPI Flash device needs to support turning off
-  pin functions /WP and /HOLD. This is often controlled through the Quad Enable
-  (QE) bit; however, some devices require Status Register bits SRP1:SPR0 set to
-  0:0 to completely disable /WP. Depending on the vendor, the QE bit is either
-  at S9 or S6 of the Flash Status Register.
-
-  Non-volatile Status Register values are loaded at powerup. When the volatile
-  values are set and no power cycling, they stay set across ESP8266 reboots
-  unless some part of the system is changing them. Flash that is fully
-  compatible with the ESP8266 QIO bit handling will be reset back to DIO by the
-  BootROM.
-
-  > How does that work? We are using volatile QE. Reboot and the BootROM
-  > rewrites Status Register QE back to non-volatile QE clear.
-  > Hmm, how does the flash handle switching back and forth setting of
-  > volatile/non-volatile? I'll assume a read/modify/write non-volatile is
-  > going to incorporate previous volatile bits writen.
-  > I assume this is not a problem, after a few boot cycles, the non-volatile
-  > bits are not changing. Only the volatile change at the call to
-  > reclaim_GPIO_9_10().
-  >
-  > BootROM Enable_QMode and Disable_QMode sets and clears the QE bit.
-  > Enable_QMode sets QE bit and clears all other 16-bits.
-  > Diable_QMode clears the upper 8-bits and keeps the lower 8-bits in the Flash
-  > status register. This operation is done at each boot. It is best to do
-  > modifications at post boot as volatile leaving the non-volatile state
-  > unchanged for boot.
-  >
+  To free up the GPIO pins, the SPI Flash device needs a method for turning off
+  pin functions /WP and /HOLD, often done through the Quad Enable (QE) bit;
+  however, some devices require Status Register bits SRP1:SPR0 set to (0:0), to
+  disable /WP. Depending on the vendor, the QE bit is either at S9 or S6 of the
+  Flash Status Register. We don't support QE at S15. And, neither does the
+  NONOS_SDK and RTOS_SDK, at least not directly.
 
   After a successful call to `reclaim_GPIO_9_10()`, pinMode can be used on GPIO
   pins 9 and 10 to define their new function.
@@ -52,23 +30,33 @@
 
   * The Sketch must be built with SPI Flash Mode set to DIO or DOUT.
 
-  * Does the Flash Chip support QIO?
+  * To avoid bricking the flash memory, we make no assumptions about the flash
+    memory's specifications. Each vendor requires explicit code support. If the
+    built-in cases do not support a flash device, you will need to add to or
+    create a custom flash vendor handler `spi_flash_vendor_cases().` See custom
+    examples.
 
-    For example, the EN25Q32C does not have the QE bit as defined by other
-    vendors. It does not have the /HOLD signal. And /WP is disabled by status
-    register-1 BIT6. This case is already handled by default unless you supply
-    "-DSUPPORT_SPI_FLASH__S6_QE_WPDIS=0" to the build.
+  * Use the "Analyze" example (and flash memory datasheet) to explore the
+    device and develop code to support disabling /WP and /HOLD. Review the
+    library's readme for more guidance.
 
-  * You may need to write a unique case for your Flash device. We rely on
-    setting Status Register QE bit (S9) to 1 and setting SRP0 and SRP1 set to 0
-    to disable pin function /WP and /HOLD on the Flash. As well as SRP0 and SRP1
-    set to 0. Reconcile this with your SPI Flash datasheet's information.
 
-  * Setting the non-volatile copy of QE=1 may not always work for every flash
-    device. The ESP8266 BootROM reads the Flash Mode from the boot image and
-    tries to reprogram the non-volatile QE bit. For a Flash Mode of DIO, the
-    BootROM will try and set QE=0 with 16-bit Write Status Register-1. Some
-    parts don't support this length.
+  Overview of what happens at boot
+
+  With the SPI Flash Mode "DIO" configuration (and "DOUT") after resetting, the
+  BootROM updates the non-volatile Status Register to align with the DIO
+  selection by clearing the QE/S9 bit. To be more precise, the BootROM clears
+  bits S15 through S8 while preserving bits S7 through S2. Therefore, for Flash
+  with the QE bit at S6, the QE/S6 bit always remains unchanged. Unlike the
+  QE/S9 case, we have a unique situation with the QE bit at S6. The BootROM does
+  not change it once we have it set correctly.
+
+  The SPI0 controller configuration is in a non-quad mode. Thus, the controller
+  will never issue quad instructions. Therefore, no data appears on Flash pins
+  IO2 and IO3. With the SPI0 controller and the Flash memory in this state, it
+  is safe to turn on the Flash QE bit (and other Status Register bits required
+  to unassign pin features /WP and /HOLD) and allow reuse of the GPIO pins
+  connected to the Flash IO2 and IO3 pins.
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -114,7 +102,7 @@ EON
  2. Only has 1 Status Register. The BootROM's 16-bit register-1 writes fail.
  3. NC, No /HOLD pin function.
  4. Status Register has WPDis, Bit6, to disable the /WP pin function.
-
+ 5. No library built-in support. Add reclaim handler as part of the Sketch.
 
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,6 +251,10 @@ bool __spi_flash_vendor_cases(const uint32_t _id) {
 #endif
 
 #if 0
+    // The sample code found in RTOS_SDK does not agree with my observations.
+    // Oddly, the NONOS_SDK does not include it. I think it is safer to leave it
+    // out as a built-in handler. Its properties can always be analyzed and
+    // added later as a custom reclaim handler.
     case SPI_FLASH_VENDOR_EON:        // 0x1C
       // Status: tested, sealed in ESP-12F module
       // EON EN25Q32C, identification based on datasheet and data matchup
@@ -285,7 +277,7 @@ bool __spi_flash_vendor_cases(const uint32_t _id) {
   }
 
   if (! success) {
-    DBG_SFU_PRINTF("* No builtin flash QE bit handler.\n");
+    DBG_SFU_PRINTF("* No built-in flash QE bit handler.\n");
   }
   return success;
 }

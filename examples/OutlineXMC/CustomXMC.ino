@@ -118,7 +118,7 @@ bool spi_flash_vendor_cases(uint32_t device) {
   // from the build.
 
   if (! success) {
-    // Check builtin support
+    // Check built-in support
     success = __spi_flash_vendor_cases(device);
   }
 #endif
