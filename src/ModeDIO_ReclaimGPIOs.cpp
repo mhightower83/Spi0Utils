@@ -49,7 +49,8 @@
   bits S15 through S8 while preserving bits S7 through S2. Therefore, for Flash
   with the QE bit at S6, the QE/S6 bit always remains unchanged. Unlike the
   QE/S9 case, we have a unique situation with the QE bit at S6. The BootROM does
-  not change it once we have it set correctly.
+  not change QE/S6 once set or cleared from the Sketch, assuming the
+  non-volatile Status Register writes.
 
   The SPI0 controller configuration is in a non-quad mode. Thus, the controller
   will never issue quad instructions. Therefore, no data appears on Flash pins

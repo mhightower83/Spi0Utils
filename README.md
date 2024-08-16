@@ -37,9 +37,8 @@ on your board. While it is in the examples folder, you shouldn't need to make
 any changes. It is a ready-to-go tool. It will indicate if the library has
 built-in support for your board. If not, it may provide code to add to your
 sketch as a new module. Copy/paste the code fragment to a new file, like
-`CustomVendor.ino`. The Analyze Sketch may spew a lot of text. The Analyze
-Sketch may spew a lot of text. To find areas of concern, focus on the lines
-starting with `*`.
+`CustomVendor.ino`. The Analyze Sketch may spew a lot of text. To find areas of
+concern, focus on the lines starting with `*`.
 
 
 Next, look at the example function [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline/Outline.ino)
@@ -61,15 +60,15 @@ same connection, but from different perspectives.
 * GPIO10, /WP, Flash SD2, Espressif SD_D3, and IO<sub>2</sub> all refer to the
 same connection, but from different perspectives.
 
-* The ESP8266 mux decides if the SPI0 controller has the pin connection or if
-the GPIO has the pin. You alter this assignment when you call `pinMode`. Example
-`pinMode(9, SPECIAL)` assigns the connection to the SPI0 controller. Where,
-`pinMode(9, OUTPUT)` connects to a GPIO output function or `pinMode(9, INPUT)`
-connects to a GPIO input function.
+* The ESP8266 mux controls whether the SPI0 controller has the pin connection
+or if the GPIO has the pin. You alter this assignment when you call `pinMode`.
+For example, `pinMode(9, SPECIAL)` assigns the connection to the SPI0
+controller. Where `pinMode(9, OUTPUT)` connects to a GPIO output function or
+`pinMode(9, INPUT)` connects to a GPIO input function.
 
-* Quad Enable, QE, is a bit in the Flash Status Register. When QE is set, pin
-functions /WP and /HOLD are disabled. This allows the Chip to reuse those pins
-in SPI Modes QIO or QOUT without creating conflicts.
+* Quad Enable, QE, is a bit in the Flash Status Register. With the QE bit set,
+pin functions /WP and /HOLD are often disabled. This bit allows the Flash to
+reuse those pins for SPI Modes "QIO" and "QOUT" without creating conflicts.
 
 * SRP1 and SRP0 refer to Status Register Protect-1 and Status Register
 Protect-0. Not all flash memories have these bits. When they do, the pair
@@ -84,7 +83,7 @@ SRP1:SRP0 (0:0) may implement an ignore /WP function.
 ### What is the hardware and NONOS SDK expecting?
 
 Espressif's [SPI Flash Modes](https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/spi-flash-modes.html)
-provides good background knowledge of supported Flash Modes and the
+provides a good background knowledge of supported Flash Modes, and the
 [FAQ](https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/spi-flash-modes.html#frequently-asked-questions)
 covers when/why they don't work.
 
@@ -104,39 +103,36 @@ The NONOS SDK is prepared to handle:
 * The above items for BootROM.
 
 * GigaDevice GD25Q32 and GD25Q128 support only 8-bit Write SR1 and SR2; however,
-it does have the QE bit at S9.
+they have the QE bit at S9. While Espressif's NONOS_SDK has Quad support for
+GigaDevice, it is unavailable in the Arduino ESP8266 core, freeing some code to
+the available IRAM pool. (See [NONOS SDK Release Version 2.1.0 - Release Notes: System.5](https://github.com/espressif/ESP8266_NONOS_SDK/issues/8#issuecomment-302009367))
+
 
 * ISSI/PMC Flash with the QE/S6 BIT6 in SR1
 
 * Macronix Flash with the QE/S6 BIT6 in SR1
 
-Based on the `SPI Flash Mode` found in the [Firmware Image Header](https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/firmware-image-format.html#file-header),
+Based on the `SPI Flash Mode` in the [Firmware Image Header](https://docs.espressif.com/projects/esptool/en/latest/esp8266/advanced-topics/firmware-image-format.html#file-header),
 the BootROM tries to set or clear the non-volatile QE bit in the SPI Flash
 Status Register-2, using QE=1 for QIO & QOUT and QE=0 for DIO and DOUT. Some
 ESP8266 module providers do not pair the ESP8266EX with a 100% compatible SPI
 Flash Chip. And the BootROM's attempt to update the QE bit fails. While some
 Flash Chips are QIO capable, they are incompatible because they do not support
-16-bit status register-1 writes (or don't have a QE bit at S9).
-When the Status Register's `WEL` bit is left set after a Write Status Register
-instruction, this is a good indicator that the 16-bit transfer failed.
+16-bit status register-1 writes (or don't have a QE bit at S9). When the Status
+Register's `WEL` bit is left set after a Write Status Register instruction, this
+is a good indicator that the 16-bit transfer failed.
 
-It may be that ESP8266 Modules with silkscreen marks of DIO on the back of the
+I suspect that ESP8266 Modules with silkscreen marks of DIO on the back of the
 antenna area may have Flash chips that technically support QIO but are
 incompatible with the ESP8266's BootROM code for QIO. However, they work fine
 using DIO.
 
-The Winbond W25Q128JVSIQ and others support 8-bit and legacy 16-bit writes to
-Status Register-1. Note older parts with _only_ legacy 16-bit Write Status
-Register-1 are still in the supply chain and shipping. Also, vendors like
-GigaDevice GD25Q32 only support discrete 8-bit Write Status Registers 1, 2 & 3
-then, the BootROM initialization fails to change the current mode.
-
 The Winbond W25Q128JVSIQ (and others) supports the 8-bit and legacy 16-bit
 writes to Status Register-1. Note older parts with _only_ legacy 16-bit Write
-Status Register-1 are still in the supply chain and shipping. With GigaDevice
-GD25Q32 (and other vendors) that only support discrete 8-bit Write Status
-Registers (1 and 2), the BootROM initialization will fail to change the current
-mode.
+Status Register-1 are still in the supply chain and shipping. And, for
+GigaDevice GD25Q32 (and other vendors) that only support discrete 8-bit Write
+Status Registers (1 and 2), the BootROM initialization will fail to change the
+current mode.
 
 
 ### Theory of Operation
@@ -188,10 +184,12 @@ for more details.
 
 ## Four common QE flash cases
 
-A lot of the code in this library is for evaluating the flash memory once you
-are finished with that, all you need to recover GPIO 9 and 10 is one of three
-main functions. Assuming your flash memory is not already supported by the
-built-in QE handlers.
+Much of this library's many lines of code run the Analyze tool. Once you know
+what is needed to support recovering GPIO pins 9 and 10, your Sketch requires
+very little additional code to support this. When your flash memory is not in
+the built-in QE handler, you add a handler function `spi_flash_vendor_cases()`.
+The Analyze tool will usually print a sample module that implements this
+function.
 
 The function `spi_flash_vendor_cases()` shown in the examples below is part of
 the `reclaim_GPIO_9_10()` call chain. See the [Outline](https://github.com/mhightower83/SpiFlashUtils/tree/master/examples/Outline/Outline.ino)
@@ -305,17 +303,20 @@ bool spi_flash_vendor_cases(uint32_t device) {
 }
 ```
 
+### For `set_ ... _write(bool non_volatile)` styled functions
 
 If the flash memory supports volatile Status Register bits, use `volatile_bit`
-for the argument. Otherwise, use non_volatile_bit. A concern with using the
-`non_volatile_bit` is wear on the flash. For the cases where the BootROM cannot
-change the QE bit, it remains set or clear. Often observed with QE/S6 or the
-flash only supports 8-bit Status Register writes. The BootROM can only handle
-QE/S9 and 16-bit Status Register-1 writes.
+for the non_volatile argument. Otherwise, use non_volatile_bit. A concern with
+using the `non_volatile_bit` is wear on the flash. For the cases where the
+BootROM cannot change the QE bit, it remains set or clear. Often observed with
+QE/S6 or the flash only supports 8-bit Status Register writes. The BootROM can
+only handle QE/S9 and 16-bit Status Register-1 writes.
 
 ## Review and Considerations
-* No generic solution for all modules. There are too many partially compatible
-Flash memories in use.
+
+* Out of fear of bricking a device, I avoided using a generalized handler.
+The library requires a specific flash match before changing Flash Status
+Register bits.
 
 * Select a non-quad SPI Flash Mode: DIO or DOUT. For the Arduino IDE selection
 `Tools->Board: "NodeMCU v1.0"`, DIO is internally selected.
@@ -327,24 +328,24 @@ equivalent to `pinMode( , SPECIAL)`. These pins are actively driven.
 _must_ be configured to ignore the /WP and /HOLD signal lines.
 
 * After reset (or boot), the /WP and /HOLD signals are actively driven. When
-used as an input, insert a series resistor (300&Omega; preferably greater) to
-limit the virtual short circuit current, which occurs when connecting two
-opposing drivers. When booting, the ESP8266 must be allowed to win this
-conflict. Otherwise, the system will not run. The output rating for an ESP8266
-GPIO pin is 12ma MAX. When calculating the current limiting resistor between the
-ESP and the signal source, use the source with the smaller current limit.
+used as an input, insert a series resistor (suggest 300&Omega; minimum) to limit
+the virtual short circuit current, which occurs when connecting two opposing
+drivers. When booting, the ESP8266 must be allowed to win this conflict.
+Otherwise, the system will not run. The output rating for an ESP8266 GPIO pin is
+12ma MAX. When calculating the current limiting resistor between the ESP and the
+signal source, use the source with the smaller current limit.
 
 * Generously adding a series resistor may conflict with the I<sup>2</sup>C
 specification.
 
-* When used as an output, take into consideration that the output will be driven
-high at boot time until `pinMode()` is called. If this poses a problem,
-additional logic may be needed to gate these GPIO pins. (A similar issue exists
-with other GPIOs 0, 1, 2, 3, and 16). A possible option lies with GPIO15. Since
-GPIO15 must be LOW for the system to boot, use this to create a master gate
-signal. At reset, GPIO15 will return to LOW.
+* When used as an output, consider that the pin will be driven high at boot
+time until `pinMode()` is called. If this poses a problem, additional logic may
+be needed to gate these GPIO pins. (A similar issue exists with other GPIOs 0,
+1, 2, 3, and 16). A possible option lies with GPIO15. Since GPIO15 must be LOW
+for the system to boot, use this to create a master gate signal. At reset,
+GPIO15 will return to LOW.
 
-* Not likely an issue; however, the capacitive load of the flash fhip's /WP and
+* While not likely an issue, the capacitive load of the flash chip's /WP and
 /HOLD pins may need to be considered on rare occasions. Of the datasheet
 parameters COUT, CIN, and CL, only CIN is of interest. CIN is the capacitance
 contributed by a Flash pin for an input operation. The typical capacitive load
@@ -355,7 +356,7 @@ loading for something like I<sup>2</sup>C.
 ## Notes, Concerns, and Possible Complications
 
 * The BootROM expects a flash chip that supports 16-bit status register writes.
-If the flash memory does not support 16-bit SR-1, this can work to our advantage.
+If the Flash memory does not support 16-bit SR-1, this can work to our advantage.
 
 * Not all Flash chips support 16-bit status register writes. exp. GD25Q32E
 
